@@ -1,0 +1,45 @@
+ 
+    for setserver-
+     dns
+-------------------------
+    for starter -
+    nodemon
+-----------------------
+    for system variables-
+    dotenv
+-------------------
+    for server -
+    express
+------------------------
+    for authentication-
+
+    jsonwebtoken
+    bcryptjs 
+    cors
+    wsl ubuntu
+-------------------------
+    for middlewares-
+     cookie-parser
+     express json middleware
+
+----------------------------
+     
+    for database-
+    mquery
+    mongoose
+-------------------------
+    for chat and video call -
+    stream-chat
+    stream.js
+------------------------
+
+for frontend -
+
+    vite bundler
+    react
+    tailwind css
+    html 5
+
+for ui -
+    daisyui
+    plugins  - postcss.config,autoprefixer
