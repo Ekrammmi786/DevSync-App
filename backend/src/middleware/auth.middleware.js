@@ -5,13 +5,17 @@ import User from "../models/user.js";
 export const protectRoute = async(req,res,next)=>{
 
 try{
-    const token = req.cookies.jwt;
+const token = req.cookies?.jwt;
+    console.log('AUTH COOKIE(jwt)=', token);
+
     if(!token){
         return res.status(401).json({
             message:"Not authorized, no token"
         })
     }
-    const decode = jwt.verify(token,process.env.JWT_SECRET_KEY);
+const decode = jwt.verify(token, process.env.JWT_SECRET_KEY);
+
+
 
     if(!decode){
         return res.status(401).json({
@@ -29,15 +33,13 @@ try{
     next();
 
 }catch(error){
-    console.error(error);
+    console.error("JWT ERROR:", error?.name, error?.message);
+    console.error("TOKEN RECEIVED:", req.cookies?.jwt);
     return res.status(500).json({
-        message:error.message
-    })
-
-
-
+        message: error.message,
+    });
 }
 
+};
 
 
-}

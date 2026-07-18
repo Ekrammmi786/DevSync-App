@@ -3,8 +3,9 @@ import FriendRequest from "../models/FriendRequest.js";
 
 export async function getRecommendedUser(req, res) {
   try {
-    const currentUserId = req.user.id;
+    const currentUserId = req.user._id;
     const currentUser = await User.findById(currentUserId);
+
     if (!currentUser) {
       return res.status(404).json({
         message: "User not found",
@@ -36,12 +37,13 @@ export async function getRecommendedUser(req, res) {
 
 export async function getMyFriends(req, res) {
   try {
-    const user = await User.findById(req.user.id)
+    const user = await User.findById(req.user._id)
       .select("friends")
       .populate(
         "friends",
-        "fullName profilePic codingLanguage learningLanguage role",
+        "fullname profilePic codingLanguage learningLanguage role",
       );
+
 
     res.status(200).json(user.friends);
   } catch (error) {
@@ -58,20 +60,21 @@ export async function getMyFriends(req, res) {
 export async function getFriendRequests(req, res) {
   try {
     const incomingReqs = await FriendRequest.find({
-      recipient: req.user.id,
+      recipient: req.user._id,
       status: "pending",
     }).populate(
       "sender",
-      "fullName profilePic codingLanguage learningLanguage role",
+      "fullname profilePic codinglanguage learninglanguage role",
     );
 
     const acceptedReqs = await FriendRequest.find({
-      sender: req.user.id,
+      sender: req.user._id,
       status: "accepted",
     }).populate(
       "recipient",
-      "fullName profilePic codingLanguage learningLanguage role",
+      "fullname profilePic codinglanguage learninglanguage role",
     );
+
 
     return res.status(200).json({ incomingReqs, acceptedReqs });
 
@@ -84,8 +87,16 @@ export async function getFriendRequests(req, res) {
 
 export async function sendFriendRequest(req, res) {
   try {
-    const myId = req.user.id;
+    const myId = req.user._id;
     const { id: recipientId } = req.params;
+
+    if (!req.user.isOnBoarded) {
+      return res.status(403).json({
+        message: "Please complete onboarding before sending friend requests",
+      });
+    }
+
+
 
     if (myId === recipientId) {
       return res.status(400).json({
@@ -136,12 +147,13 @@ export async function sendFriendRequest(req, res) {
 export async function getOutgoingFriendReqs(req, res) {
   try {
     const outgoingRequests = await FriendRequest.find({
-      sender: req.user.id,
+      sender: req.user._id,
       status: "pending",
     }).populate(
       "recipient",
-      "fullName profilePic codingLanguage learningLanguage role",
+      "fullname profilePic codinglanguage learninglanguage role",
     );
+
 
     return res.status(200).json(outgoingRequests);
   } catch (error) {
@@ -163,7 +175,8 @@ if(!friendRequestDoc){
   });
 }
 
-if(friendRequestDoc.recipient.toString()!==req.user.id){
+if(friendRequestDoc.recipient.toString()!==req.user._id.toString()){
+
   return res.status(403).json({
     message:"you are not authorized to accept this request"
   });
@@ -185,7 +198,7 @@ res.status(200).json({
 });
 
 }catch(error){
-console.log("error in frinedreq controller",error.message);
+console.log("error in friendreq controller",error.message);
 res.status(500).json({
   message:"internal server error"
 })

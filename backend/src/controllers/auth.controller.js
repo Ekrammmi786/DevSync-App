@@ -156,15 +156,22 @@ export async function onboard(req, res) {
   try {
     const userId = req.user._id;
 
-    const { fullname, bio, codinglanguage, learninglanguage, location, role} =
+    const { fullname, bio, codingLanguage, learningLanguage, location, role } =
       req.body;
+
+    
+      
+    const codinglanguage = codingLanguage;
+    const learninglanguage = learningLanguage;
+
+
 
     if (
       !fullname ||
       !bio ||
-      !codinglanguage ||
-      !learninglanguage ||
-      !location||
+      !codingLanguage ||
+      !learningLanguage ||
+      !location ||
       !role
     ) {
       return res.status(400).json({
@@ -172,20 +179,27 @@ export async function onboard(req, res) {
         missingFields: [
           !fullname && "fullname",
           !bio && "bio",
-          !codinglanguage && "nativelanguage",
-          !learninglanguage && "learninglanguage",
+          !codingLanguage && "codingLanguage",
+          !learningLanguage && "learningLanguage",
           !location && "location",
-          !role&&"role"
+          !role && "role",
         ].filter(Boolean),
       });
     }
 
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
-        ...req.body,
+        fullname,
+        bio,
+        codinglanguage: codinglanguage,
+        learninglanguage: learninglanguage,
+        location,
+        role,
         isOnBoarded: true,
       },
+
       { new: true },
     );
 
