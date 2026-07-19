@@ -39,7 +39,11 @@ for frontend -
     react
     tailwind css
     html 5
-
+----------------------------------
 for ui -
+    react hot toaster for popups
     daisyui
     plugins  - postcss.config,autoprefixer
+-----------------------------------
+for api setup-
+    tanstack query

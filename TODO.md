@@ -1,0 +1,3 @@
+- [x] Fix frontend/src/App.jsx: correct useQuery options (queryFn) and destructure { data, isLoading, error }
+- [x] Remove/adjust malformed console.log({error:}); usage
+- [x] Verify by running frontend build (npm run build)
