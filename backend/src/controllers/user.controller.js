@@ -20,7 +20,7 @@ export async function getRecommendedUser(req, res) {
             $nin: currentUser.friends,
           },
         },
-        { isOnboarded: true },
+        { isOnBoarded: true },
       ],
     });
 
@@ -43,7 +43,6 @@ export async function getMyFriends(req, res) {
         "friends",
         "fullname profilePic codingLanguage learningLanguage role",
       );
-
 
     res.status(200).json(user.friends);
   } catch (error) {
@@ -75,10 +74,7 @@ export async function getFriendRequests(req, res) {
       "fullname profilePic codinglanguage learninglanguage role",
     );
 
-
     return res.status(200).json({ incomingReqs, acceptedReqs });
-
-    
   } catch (error) {
     console.error("error in getFriendRequests controller", error.message);
     return res.status(500).json({ message: "internal server error" });
@@ -95,8 +91,6 @@ export async function sendFriendRequest(req, res) {
         message: "Please complete onboarding before sending friend requests",
       });
     }
-
-
 
     if (myId === recipientId) {
       return res.status(400).json({
@@ -143,7 +137,6 @@ export async function sendFriendRequest(req, res) {
   }
 }
 
-
 export async function getOutgoingFriendReqs(req, res) {
   try {
     const outgoingRequests = await FriendRequest.find({
@@ -154,7 +147,6 @@ export async function getOutgoingFriendReqs(req, res) {
       "fullname profilePic codinglanguage learninglanguage role",
     );
 
-
     return res.status(200).json(outgoingRequests);
   } catch (error) {
     console.error("error in getOutgoingFriendReqs controller", error.message);
@@ -162,45 +154,99 @@ export async function getOutgoingFriendReqs(req, res) {
   }
 }
 
-export async function acceptFriendRequest(req,res){
-try{
+export async function acceptFriendRequest(req, res) {
+  try {
+    const { id: requestId } = req.params;
 
-const {id:requestId} =req.params
+    const friendRequestDoc = await FriendRequest.findById(requestId);
 
-const friendRequestDoc = await FriendRequest.findById(requestId);
+    if (!friendRequestDoc) {
+      return res.status(404).json({
+        message: "friend requests not found!",
+      });
+    }
 
-if(!friendRequestDoc){
-  return res.status(404).json({
-    message:"friend requests not found!"
-  });
+    if (friendRequestDoc.recipient.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        message: "you are not authorized to accept this request",
+      });
+    }
+
+    friendRequestDoc.status = "accepted";
+    await friendRequestDoc.save();
+
+    await User.findByIdAndUpdate(friendRequestDoc.recipient, {
+      $addToSet: { friends: friendRequestDoc.sender },
+    });
+
+    await User.findByIdAndUpdate(friendRequestDoc.sender, {
+      $addToSet: { friends: friendRequestDoc.recipient },
+    });
+
+    res.status(200).json({
+      message: "friend request accepted",
+    });
+  } catch (error) {
+    console.log("error in friendreq controller", error.message);
+    res.status(500).json({
+      message: "internal server error",
+    });
+  }
 }
 
-if(friendRequestDoc.recipient.toString()!==req.user._id.toString()){
+export async function searchUsers(req, res) {
+  try {
+    const { fullname = "", role = "" } = req.body;
 
-  return res.status(403).json({
-    message:"you are not authorized to accept this request"
-  });
-}
+    const searchQuery = {};
 
-friendRequestDoc.status = "accepted"
-await friendRequestDoc.save();
+    if (fullname.trim()) {
+      searchQuery.fullname = { $regex: fullname, $options: "i" };
+    }
 
-await User.findByIdAndUpdate(friendRequestDoc.recipient,{
-  $addToSet:{friends:friendRequestDoc.sender}
-});
+    if (role.trim()) {
+      searchQuery.role = { $regex: role, $options: "i" };
+    }
 
-await User.findByIdAndUpdate(friendRequestDoc.sender,{
-  $addToSet:{friends:friendRequestDoc.recipient}
-});
+    searchQuery.isOnBoarded = true;
 
-res.status(200).json({
-  message:"friend request accepted"
-});
+    const users = await User.find(searchQuery)
+      .select("fullname profilePic codinglanguage learninglanguage role location bio")
+      .lean();
 
-}catch(error){
-console.log("error in friendreq controller",error.message);
-res.status(500).json({
-  message:"internal server error"
-})
-}
+    const currentUser = await User.findById(req.user._id).select("friends").lean();
+    const friendIds = currentUser.friends.map((id) => id.toString());
+
+    const pendingRequests = await FriendRequest.find({
+      $or: [
+        { sender: req.user._id, status: "pending" },
+        { recipient: req.user._id, status: "pending" },
+      ],
+    }).lean();
+
+    const pendingIds = pendingRequests.map((r) =>
+      r.sender.toString() === req.user._id.toString()
+        ? r.recipient.toString()
+        : r.sender.toString()
+    );
+
+    const usersWithStatus = users.map((user) => {
+      let friendStatus = "none";
+      if (friendIds.includes(user._id.toString())) friendStatus = "friends";
+      else if (pendingIds.includes(user._id.toString())) friendStatus = "pending";
+      return { ...user, friendStatus };
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: usersWithStatus.length,
+      users: usersWithStatus,
+    });
+  } catch (error) {
+    console.log("error in searching users", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "internal server error",
+    });
+  }
 }

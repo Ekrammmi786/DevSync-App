@@ -82,9 +82,18 @@ export async function signup(req, res) {
   } catch (error) {
     console.error(error);
 
-    return res.status(500).json({
-      message: error.message,
+   if(error.message.includes('quota')||error.message.includes('spaces')){
+    return res.status(507).json({
+      success:false,
+      message:"server storage limit reached,please contact admin",
+      code:"STORAGE_QUOTA-EXCEEDED"
     });
+   }
+  res.status(500).json({
+    successs:false,
+    message:"internal server error or in signup process"
+  })
+    
   }
 }
 

@@ -5,7 +5,7 @@ import userRoutes from "./routes/user.routes.js"
 import cookieParser from "cookie-parser"
 import { connectDB } from "./lib/db.js";
 import cors from "cors";
-
+import chatroutes from "./routes/chat.routes.js"
 const app = express();
 const PORT = process.env.PORT || 5001;
 
@@ -17,8 +17,7 @@ app.use(cors({
 }));
 app.use("/api/auth", authRoutes);
 app.use("/api/user",userRoutes)
-
-// Fallback (for wrong routes like /login instead of /api/auth/login)
+app.use("/api/chat",chatroutes)
 app.use((req, res) => {
   res.status(404).json({
     message: `Route not found: ${req.method} ${req.originalUrl}`,
