@@ -21,6 +21,10 @@
     for middlewares-
      cookie-parser
      express json middleware
+     nodemailer 
+     express rate limiter
+     mailtrap.io
+     gmail email pass
 
 ----------------------------
      

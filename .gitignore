@@ -7,7 +7,7 @@
 node_modules/
 **/node_modules/
 
-# --- Logs / debug ---
+# --- Logs ---
 logs/
 **/logs/
 *.log
@@ -17,65 +17,56 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# --- Build / output ---
-# Vite/React
+# --- Build Output ---
 /dist/
 **/dist/
 /.vite/
 **/.vite/
 
-# Node/coverage
+# --- Coverage ---
 /coverage/
 **/coverage/
 .nyc_output/
 **/.nyc_output/
 
-# --- Environment / secrets (MOST IMPORTANT) ---
+# --- Environment ---
 .env
 .env.*
 !.env.example
-
-# If you use dotenv-generated local files
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# --- Runtime artifacts ---
-# Express apps sometimes create temp files; keep generic
+# --- Process & Runtime ---
 *.pid
 *.seed
 *.seed.*
 *.pid.*
 
-# --- OS / editor ---
+# --- OS Files ---
 .DS_Store
 Thumbs.db
 
+# --- IDE/Editor ---
 .vscode/
 !.vscode/extensions.json
 .idea/
 *.iml
-
-# JetBrains / tooling
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# --- Vite/ESLint sometimes caches ---
+# --- Cache ---
 .eslintcache
 .cache
 
-# --- Backend specific common local dirs (safe defaults) ---
-# (Only if you create them; gitignore won't affect source files)
+# --- Uploads ---
 uploads/
 **/uploads/
 
-# --- Docker (optional) ---
-# *.env in container contexts is covered above
-
-# --- Keep repo-root config files tracked ---
-# (No un-ignore rules here; adjust if you need.)
-
+# --- Extra (not needed in repo) ---
+FIGMA_DESIGN_PROMPT.md
+MongoDB_StreamChat_Scaling_Guide.md

@@ -45,13 +45,18 @@ const userSchema = new mongoose.Schema({
     },
     isOnBoarded:{
         type:Boolean,
-        default:true,
+        default:false,
     },
     friends:[{
         type:mongoose.Schema.Types.ObjectId,
         reference:"User"
-    }]
-
+    }],
+    isVerified: { type: Boolean, default: false },
+otpHash: { type: String, default: null, select: false },
+otpExpiry: { type: Date, default: null, select: false },
+otpAttempts: { type: Number, default: 0, select: false },
+otpResendCount: { type: Number, default: 0, select: false },
+otpResendWindowStart: { type: Date, default: null, select: false }
 
 
 },{timestamps:true});
@@ -72,6 +77,6 @@ userSchema.pre("save", async function (next) {
     }
 });
 
-const User = mongoose.model("User", userSchema);
+const User =mongoose.models.User|| mongoose.model("User", userSchema);
 
 export default User;

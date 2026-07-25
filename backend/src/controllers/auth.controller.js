@@ -2,6 +2,8 @@ import User from "../models/user.js";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
 import { upsertStreamUser } from "../lib/stream.js";
+import { generateOTP, hashOTP } from "../services/otp.services.js";
+import { sendOtpEmail } from "../services/email.services.js";
 
 export async function signup(req, res) {
   const { email, password, fullname } = req.body;
@@ -46,6 +48,19 @@ export async function signup(req, res) {
       profilePic: randomAvatar,
     });
 
+    // Send OTP email after successful signup
+    try {
+      const otp = generateOTP();
+      await User.findByIdAndUpdate(newUser._id, {
+        otpHash: hashOTP(otp),
+        otpExpiry: new Date(Date.now() + 10 * 60 * 1000),
+      });
+      await sendOtpEmail(newUser.email, otp);
+      console.log(`OTP sent to ${newUser.email}`);
+    } catch (err) {
+      console.error("OTP generation/sending failed:", err);
+    }
+
     try {
       await upsertStreamUser({
         id: newUser._id.toString(),
@@ -89,8 +104,8 @@ export async function signup(req, res) {
       code:"STORAGE_QUOTA-EXCEEDED"
     });
    }
-  res.status(500).json({
-    successs:false,
+  return res.status(500).json({
+    success:false,
     message:"internal server error or in signup process"
   })
     
