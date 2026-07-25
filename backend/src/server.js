@@ -24,11 +24,9 @@ app.use((req, res) => {
   });
 });
 
-// Global error handling middleware
 app.use((err, req, res, next) => {
   console.error("Unhandled Error:", err);
 
-  // Handle ApiError instances
   if (err.StatusCode) {
     return res.status(err.StatusCode).json({
       success: false,
@@ -37,7 +35,6 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // Handle validation errors (Mongoose)
   if (err.name === "ValidationError") {
     return res.status(400).json({
       success: false,
@@ -46,7 +43,6 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // Handle duplicate key error (MongoDB)
   if (err.code === 11000) {
     return res.status(409).json({
       success: false,
@@ -54,7 +50,6 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // Default server error
   res.status(500).json({
     success: false,
     message: "Internal server error",
@@ -65,5 +60,3 @@ app.listen(PORT, () => {
   console.log(`server is presenting on port : ${PORT}`);
   connectDB();
 });
-
-
