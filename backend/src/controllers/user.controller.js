@@ -1,4 +1,4 @@
-import User from "../models/user.js";
+import User from "../models/User.js";
 import FriendRequest from "../models/FriendRequest.js";
 
 export async function getRecommendedUser(req, res) {
@@ -8,76 +8,120 @@ export async function getRecommendedUser(req, res) {
 
     if (!currentUser) {
       return res.status(404).json({
+        success: false,
         message: "User not found",
+        code: "USER_NOT_FOUND",
       });
     }
 
-    const recommendedUsers = await User.find({
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = parseInt(req.query.skip) || 0;
+
+    const filter = {
       $and: [
         { _id: { $ne: currentUserId } },
-        {
-          _id: {
-            $nin: currentUser.friends,
-          },
-        },
+        { _id: { $nin: currentUser.friends } },
         { isOnBoarded: true },
       ],
-    });
+    };
+
+    const recommendedUsers = await User.find(filter).skip(skip).limit(limit);
+    const total = await User.countDocuments(filter);
 
     res.status(200).json({
-      recommendedUsers,
+      success: true,
+      data: recommendedUsers,
+      pagination: {
+        page: Math.floor(skip / limit) + 1,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasMore: skip + limit < total,
+      },
     });
   } catch (error) {
     console.error("error in getrecommendation ", error.message);
     res.status(500).json({
-      message: "internal server problem",
+      success: false,
+      message: "Internal server error",
+      code: "SERVER_ERROR",
     });
   }
 }
 
 export async function getMyFriends(req, res) {
   try {
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = parseInt(req.query.skip) || 0;
+
     const user = await User.findById(req.user._id)
       .select("friends")
-      .populate(
-        "friends",
-        "fullname profilePic codingLanguage learningLanguage role",
-      );
+      .populate({
+        path: "friends",
+        select: "fullname profilePic codingLanguage learningLanguage role",
+        options: { skip, limit },
+      });
 
-    res.status(200).json(user.friends);
+    const total = await User.findById(req.user._id)
+      .select("friends")
+      .then((u) => u.friends.length);
+
+    res.status(200).json({
+      success: true,
+      data: user.friends,
+      pagination: {
+        page: Math.floor(skip / limit) + 1,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasMore: skip + limit < total,
+      },
+    });
   } catch (error) {
-    console.error(
-      "error in getmyfriends recommendation Controller ",
-      error.message,
-    );
+    console.error("error in getmyfriends Controller ", error.message);
     res.status(500).json({
-      message: "internal server has problem",
+      success: false,
+      message: "Internal server error",
+      code: "SERVER_ERROR",
     });
   }
 }
 
 export async function getFriendRequests(req, res) {
   try {
-    const incomingReqs = await FriendRequest.find({
-      recipient: req.user._id,
-      status: "pending",
-    }).populate(
-      "sender",
-      "fullname profilePic codinglanguage learninglanguage role",
-    );
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = parseInt(req.query.skip) || 0;
 
-    const acceptedReqs = await FriendRequest.find({
-      sender: req.user._id,
-      status: "accepted",
-    }).populate(
-      "recipient",
-      "fullname profilePic codinglanguage learninglanguage role",
-    );
+    const filter = { recipient: req.user._id, status: "pending" };
 
-    return res.status(200).json({ incomingReqs, acceptedReqs });
+    const incomingReqs = await FriendRequest.find(filter)
+      .skip(skip)
+      .limit(limit)
+      .populate(
+        "sender",
+        "fullname profilePic codinglanguage learninglanguage role"
+      );
+
+    const total = await FriendRequest.countDocuments(filter);
+
+    return res.status(200).json({
+      success: true,
+      data: incomingReqs,
+      pagination: {
+        page: Math.floor(skip / limit) + 1,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasMore: skip + limit < total,
+      },
+    });
   } catch (error) {
     console.error("error in getFriendRequests controller", error.message);
-    return res.status(500).json({ message: "internal server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      code: "SERVER_ERROR",
+    });
   }
 }
 
@@ -88,27 +132,34 @@ export async function sendFriendRequest(req, res) {
 
     if (!req.user.isOnBoarded) {
       return res.status(403).json({
+        success: false,
         message: "Please complete onboarding before sending friend requests",
+        code: "ONBOARDING_REQUIRED",
       });
     }
 
     if (myId === recipientId) {
       return res.status(400).json({
-        success: "false",
-        message: "you can't send friend request to yourself",
+        success: false,
+        message: "You can't send friend request to yourself",
+        code: "SELF_REQUEST",
       });
     }
 
     const recipient = await User.findById(recipientId);
     if (!recipient) {
       return res.status(404).json({
-        message: "recipients not found",
+        success: false,
+        message: "Recipient not found",
+        code: "RECIPIENT_NOT_FOUND",
       });
     }
 
     if (recipient.friends.includes(myId)) {
       return res.status(400).json({
-        message: "you are already friends with this user",
+        success: false,
+        message: "You are already friends with this user",
+        code: "ALREADY_FRIENDS",
       });
     }
 
@@ -117,11 +168,14 @@ export async function sendFriendRequest(req, res) {
         { sender: myId, recipient: recipientId },
         { sender: recipientId, recipient: myId },
       ],
+      status: { $ne: "rejected" },
     });
 
     if (existingRequest) {
       return res.status(400).json({
-        message: "a friend already exists between you and this user",
+        success: false,
+        message: "A pending request already exists between you and this user",
+        code: "REQUEST_EXISTS",
       });
     }
 
@@ -130,10 +184,17 @@ export async function sendFriendRequest(req, res) {
       recipient: recipientId,
     });
 
-    return res.status(201).json(friendrequest);
+    return res.status(201).json({
+      success: true,
+      data: friendrequest,
+    });
   } catch (error) {
-    console.error("error is send request controller", error.message);
-    return res.status(500).json({ message: "internal Server Error" });
+    console.error("error in send request controller", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      code: "SERVER_ERROR",
+    });
   }
 }
 
@@ -144,13 +205,20 @@ export async function getOutgoingFriendReqs(req, res) {
       status: "pending",
     }).populate(
       "recipient",
-      "fullname profilePic codinglanguage learninglanguage role",
+      "fullname profilePic codinglanguage learninglanguage role"
     );
 
-    return res.status(200).json(outgoingRequests);
+    return res.status(200).json({
+      success: true,
+      data: outgoingRequests,
+    });
   } catch (error) {
     console.error("error in getOutgoingFriendReqs controller", error.message);
-    return res.status(500).json({ message: "internal server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      code: "SERVER_ERROR",
+    });
   }
 }
 
@@ -162,13 +230,17 @@ export async function acceptFriendRequest(req, res) {
 
     if (!friendRequestDoc) {
       return res.status(404).json({
-        message: "friend requests not found!",
+        success: false,
+        message: "Friend request not found",
+        code: "NOT_FOUND",
       });
     }
 
     if (friendRequestDoc.recipient.toString() !== req.user._id.toString()) {
       return res.status(403).json({
-        message: "you are not authorized to accept this request",
+        success: false,
+        message: "You are not authorized to accept this request",
+        code: "UNAUTHORIZED",
       });
     }
 
@@ -184,12 +256,54 @@ export async function acceptFriendRequest(req, res) {
     });
 
     res.status(200).json({
-      message: "friend request accepted",
+      success: true,
+      data: { message: "Friend request accepted" },
     });
   } catch (error) {
-    console.log("error in friendreq controller", error.message);
+    console.log("error in accept friend request controller", error.message);
     res.status(500).json({
-      message: "internal server error",
+      success: false,
+      message: "Internal server error",
+      code: "SERVER_ERROR",
+    });
+  }
+}
+
+export async function rejectfriend(req, res) {
+  try {
+    const { id: requestId } = req.params;
+
+    const friendRequestDoc = await FriendRequest.findById(requestId);
+
+    if (!friendRequestDoc) {
+      return res.status(404).json({
+        success: false,
+        message: "Friend request not found",
+        code: "NOT_FOUND",
+      });
+    }
+
+    if (friendRequestDoc.recipient.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to reject this request",
+        code: "UNAUTHORIZED",
+      });
+    }
+
+    friendRequestDoc.status = "rejected";
+    await friendRequestDoc.save();
+
+    return res.status(200).json({
+      success: true,
+      data: { message: "Friend request rejected" },
+    });
+  } catch (error) {
+    console.log("error in reject friend request controller", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      code: "SERVER_ERROR",
     });
   }
 }
@@ -197,6 +311,9 @@ export async function acceptFriendRequest(req, res) {
 export async function searchUsers(req, res) {
   try {
     const { fullname = "", role = "" } = req.body;
+
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = parseInt(req.query.skip) || 0;
 
     const searchQuery = {};
 
@@ -211,8 +328,12 @@ export async function searchUsers(req, res) {
     searchQuery.isOnBoarded = true;
 
     const users = await User.find(searchQuery)
+      .skip(skip)
+      .limit(limit)
       .select("fullname profilePic codinglanguage learninglanguage role location bio")
       .lean();
+
+    const total = await User.countDocuments(searchQuery);
 
     const currentUser = await User.findById(req.user._id).select("friends").lean();
     const friendIds = currentUser.friends.map((id) => id.toString());
@@ -239,14 +360,21 @@ export async function searchUsers(req, res) {
 
     return res.status(200).json({
       success: true,
-      count: usersWithStatus.length,
-      users: usersWithStatus,
+      data: usersWithStatus,
+      pagination: {
+        page: Math.floor(skip / limit) + 1,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasMore: skip + limit < total,
+      },
     });
   } catch (error) {
     console.log("error in searching users", error.message);
     return res.status(500).json({
       success: false,
-      message: "internal server error",
+      message: "Internal server error",
+      code: "SERVER_ERROR",
     });
   }
 }

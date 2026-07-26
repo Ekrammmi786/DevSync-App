@@ -17,7 +17,7 @@ export const sendVerificationOTP = AsyncHandler(async (req,res)=>{
     })
     await sendOtpEmail(req.user.email,otp);
     res.json({success:true,
-        message:"otp sent successfully"
+        data:{message:"otp sent successfully"}
     })
 });
 export const verifyEmail = AsyncHandler(async (req, res) => {
@@ -38,7 +38,7 @@ export const verifyEmail = AsyncHandler(async (req, res) => {
     isVerified: true,
     $unset: { otpHash: 1, otpExpiry: 1, otpAttempts: 1, otpResendCount: 1, otpResendWindowStart: 1 },
   });
-  res.json({ success: true, message: "Email verified successfully" });
+  res.json({ success: true, data: { message: "Email verified successfully" } });
 });
 
 export const resendOTP = AsyncHandler(async (req, res) => {
@@ -64,7 +64,7 @@ export const resendOTP = AsyncHandler(async (req, res) => {
     otpResendWindowStart: windowStart,
   });
   await sendOtpEmail(user.email, otp);
-  res.json({ success: true, message: "OTP resent successfully" });
+  res.json({ success: true, data: { message: "OTP resent successfully" } });
 });
 
 

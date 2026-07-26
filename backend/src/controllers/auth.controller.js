@@ -1,4 +1,4 @@
-import User from "../models/user.js";
+import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
 import { upsertStreamUser } from "../lib/stream.js";
@@ -11,13 +11,17 @@ export async function signup(req, res) {
   try {
     if (!email || !password || !fullname) {
       return res.status(400).json({
+        success: false,
         message: "All fields are required",
+        code: "VALIDATION_ERROR",
       });
     }
 
     if (password.length < 6) {
       return res.status(400).json({
+        success: false,
         message: "Password must be at least 6 characters",
+        code: "WEAK_PASSWORD",
       });
     }
 
@@ -25,7 +29,9 @@ export async function signup(req, res) {
 
     if (!emailRegex.test(email)) {
       return res.status(400).json({
+        success: false,
         message: "Invalid email format",
+        code: "INVALID_EMAIL",
       });
     }
 
@@ -33,12 +39,13 @@ export async function signup(req, res) {
 
     if (existingUser) {
       return res.status(400).json({
+        success: false,
         message: "User already exists",
+        code: "USER_EXISTS",
       });
     }
 
     const idx = Math.floor(Math.random() * (99 - 11 + 1)) + 11;
-
     const randomAvatar = `https://testingbot.com/free-online-tools/random-avatar/4${idx}`;
 
     const newUser = await User.create({
@@ -56,7 +63,7 @@ export async function signup(req, res) {
       });
       await sendOtpEmail(newUser.email, otp);
     } catch (err) {
-      console.error("OTP generation/sending failed:", err);
+      console.error("OTP sending failed:", err);
     }
 
     try {
@@ -66,7 +73,7 @@ export async function signup(req, res) {
         image: newUser.profilePic || "",
       });
     } catch (error) {
-      console.error("Error creating/updating user in Stream:", error);
+      console.error("Stream user creation failed:", error);
     }
 
     const accessToken = jwt.sign(
@@ -100,23 +107,24 @@ export async function signup(req, res) {
 
     return res.status(201).json({
       success: true,
-      user: newUser,
+      data: newUser,
     });
   } catch (error) {
     console.error(error);
 
-   if(error.message.includes('quota')||error.message.includes('spaces')){
-    return res.status(507).json({
-      success:false,
-      message:"server storage limit reached,please contact admin",
-      code:"STORAGE_QUOTA-EXCEEDED"
+    if (error.message.includes("quota") || error.message.includes("spaces")) {
+      return res.status(507).json({
+        success: false,
+        message: "Server storage limit reached, please contact admin",
+        code: "STORAGE_QUOTA_EXCEEDED",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error during signup",
+      code: "SERVER_ERROR",
     });
-   }
-  return res.status(500).json({
-    success:false,
-    message:"internal server error or in signup process"
-  })
-    
   }
 }
 
@@ -126,7 +134,9 @@ export async function login(req, res) {
 
     if (!email || !password) {
       return res.status(400).json({
+        success: false,
         message: "All fields are required",
+        code: "VALIDATION_ERROR",
       });
     }
 
@@ -134,7 +144,9 @@ export async function login(req, res) {
 
     if (!user) {
       return res.status(400).json({
+        success: false,
         message: "Invalid email or password",
+        code: "INVALID_CREDENTIALS",
       });
     }
 
@@ -142,7 +154,9 @@ export async function login(req, res) {
 
     if (!isPasswordCorrect) {
       return res.status(400).json({
+        success: false,
         message: "Invalid email or password",
+        code: "INVALID_CREDENTIALS",
       });
     }
 
@@ -177,13 +191,14 @@ export async function login(req, res) {
 
     return res.status(200).json({
       success: true,
-      user,
+      data: user,
     });
   } catch (error) {
     console.error(error);
-
     return res.status(500).json({
-      message: error.message,
+      success: false,
+      message: "Internal server error",
+      code: "SERVER_ERROR",
     });
   }
 }
@@ -202,7 +217,7 @@ export async function logout(req, res) {
 
   return res.status(200).json({
     success: true,
-    message: "Logged out successfully",
+    data: { message: "Logged out successfully" },
   });
 }
 
@@ -233,6 +248,7 @@ export async function refreshToken(req, res) {
     }
 
     const user = await User.findById(decoded.userId).select("+refreshToken");
+
     if (!user || !user.refreshToken || user.refreshToken !== incomingRefreshToken) {
       return res.status(401).json({
         success: false,
@@ -256,13 +272,14 @@ export async function refreshToken(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: "Token refreshed",
+      data: { message: "Token refreshed" },
     });
   } catch (error) {
     console.error("Refresh token error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
+      code: "SERVER_ERROR",
     });
   }
 }
@@ -270,31 +287,13 @@ export async function refreshToken(req, res) {
 export async function onboard(req, res) {
   try {
     const userId = req.user._id;
+    const { fullname, bio, codingLanguage, learningLanguage, location, role } = req.body;
 
-    const { fullname, bio, codingLanguage, learningLanguage, location, role } =
-      req.body;
-
-    const codinglanguage = codingLanguage;
-    const learninglanguage = learningLanguage;
-
-    if (
-      !fullname ||
-      !bio ||
-      !codingLanguage ||
-      !learningLanguage ||
-      !location ||
-      !role
-    ) {
+    if (!fullname || !bio || !codingLanguage || !learningLanguage || !location || !role) {
       return res.status(400).json({
+        success: false,
         message: "All fields are required",
-        missingFields: [
-          !fullname && "fullname",
-          !bio && "bio",
-          !codingLanguage && "codingLanguage",
-          !learningLanguage && "learningLanguage",
-          !location && "location",
-          !role && "role",
-        ].filter(Boolean),
+        code: "VALIDATION_ERROR",
       });
     }
 
@@ -303,18 +302,20 @@ export async function onboard(req, res) {
       {
         fullname,
         bio,
-        codinglanguage: codinglanguage,
-        learninglanguage: learninglanguage,
+        codinglanguage: codingLanguage,
+        learninglanguage: learningLanguage,
         location,
         role,
         isOnBoarded: true,
       },
-      { new: true },
+      { new: true }
     );
 
     if (!updatedUser) {
       return res.status(404).json({
+        success: false,
         message: "User not found",
+        code: "USER_NOT_FOUND",
       });
     }
 
@@ -325,21 +326,19 @@ export async function onboard(req, res) {
         image: updatedUser.profilePic || "",
       });
     } catch (streamError) {
-      console.log(
-        `Error occurred while creating/updating stream user for user ${updatedUser.fullname}:`,
-        streamError,
-      );
+      console.error("Stream user update failed:", streamError);
     }
 
     return res.status(200).json({
       success: true,
-      user: updatedUser,
+      data: updatedUser,
     });
   } catch (error) {
     console.error(error);
-
     return res.status(500).json({
-      message: error.message,
+      success: false,
+      message: "Internal server error",
+      code: "SERVER_ERROR",
     });
   }
 }

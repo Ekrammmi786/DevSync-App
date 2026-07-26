@@ -77,6 +77,10 @@ userSchema.pre("save", async function (next) {
   }
 });
 
+userSchema.index({email:1});
+userSchema.index({fullname:1});
+userSchema.index({isOnBoarded:1});
+
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 
 export default User;

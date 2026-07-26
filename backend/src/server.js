@@ -1,26 +1,33 @@
 import express from "express";
 import "dotenv/config";
 import authRoutes from "./routes/auth.routes.js";
-import userRoutes from "./routes/user.routes.js"
-import cookieParser from "cookie-parser"
+import userRoutes from "./routes/user.routes.js";
+import cookieParser from "cookie-parser";
 import { connectDB } from "./lib/db.js";
 import cors from "cors";
-import chatroutes from "./routes/chat.routes.js"
+import chatroutes from "./routes/chat.routes.js";
+
 const app = express();
 const PORT = process.env.PORT || 5001;
 
 app.use(express.json());
-app.use(cookieParser())
-app.use(cors({
-  origin:"http://localhost:5173",
-  credentials:true
-}));
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
+
 app.use("/api/auth", authRoutes);
-app.use("/api/user",userRoutes)
-app.use("/api/chat",chatroutes)
+app.use("/api/user", userRoutes);
+app.use("/api/chat", chatroutes);
+
 app.use((req, res) => {
   res.status(404).json({
+    success: false,
     message: `Route not found: ${req.method} ${req.originalUrl}`,
+    code: "ROUTE_NOT_FOUND",
   });
 });
 
@@ -39,7 +46,7 @@ app.use((err, req, res, next) => {
     return res.status(400).json({
       success: false,
       message: "Validation error",
-      errors: Object.values(err.errors).map((e) => e.message),
+      code: "VALIDATION_ERROR",
     });
   }
 
@@ -47,16 +54,18 @@ app.use((err, req, res, next) => {
     return res.status(409).json({
       success: false,
       message: "Duplicate field value",
+      code: "DUPLICATE_KEY",
     });
   }
 
   res.status(500).json({
     success: false,
     message: "Internal server error",
+    code: "SERVER_ERROR",
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`server is presenting on port : ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
   connectDB();
 });
