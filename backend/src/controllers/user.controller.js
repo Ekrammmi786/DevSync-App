@@ -1,33 +1,42 @@
 import User from "../models/User.js";
 import FriendRequest from "../models/FriendRequest.js";
+import AsyncHandler from "../utils/asyncHandler.js";
 
-export async function getRecommendedUser(req, res) {
-  try {
-    const currentUserId = req.user._id;
-    const currentUser = await User.findById(currentUserId);
+   export const getRecommendedUser = AsyncHandler(async(req,res)=>{
+    const limit = parseInt(req.query.limit)||20;
+    const skip = parseInt(req.query.skip)||0;
+    
+    const currentUser = await User.findById(req.user._id);
+    const recommendedUsers = await User.aggregate([
+      {
+        $match:{
+          _id:{$ne:currentUser._id,$nin:
+            currentUser.friends
+          },
+          isOnBoarded:true,
+        },
+      },
+      {
+        $addFields:{
+          relevanceScore: {
+          $add: [
+            { $cond: [{ $eq: ["$codinglanguage", currentUser.codinglanguage] }, 3, 0] },
+            { $cond: [{ $eq: ["$location", currentUser.location] }, 2, 0] },
+            { $cond: [{ $eq: ["$role", currentUser.role] }, 1, 0] },
+          ],
+        },
 
-    if (!currentUser) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-        code: "USER_NOT_FOUND",
-      });
-    }
-
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = parseInt(req.query.skip) || 0;
-
-    const filter = {
-      $and: [
-        { _id: { $ne: currentUserId } },
-        { _id: { $nin: currentUser.friends } },
-        { isOnBoarded: true },
-      ],
-    };
-
-    const recommendedUsers = await User.find(filter).skip(skip).limit(limit);
-    const total = await User.countDocuments(filter);
-
+        },
+      },
+        { $sort: { relevanceScore: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+    ]);
+    
+    const total = await User.countDocuments({
+  _id: { $ne: currentUser._id, $nin: currentUser.friends },
+  isOnBoarded: true
+});
     res.status(200).json({
       success: true,
       data: recommendedUsers,
@@ -39,15 +48,7 @@ export async function getRecommendedUser(req, res) {
         hasMore: skip + limit < total,
       },
     });
-  } catch (error) {
-    console.error("error in getrecommendation ", error.message);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      code: "SERVER_ERROR",
-    });
-  }
-}
+  });
 
 export async function getMyFriends(req, res) {
   try {

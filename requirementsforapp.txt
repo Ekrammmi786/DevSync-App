@@ -51,3 +51,21 @@ for ui -
 -----------------------------------
 for api setup-
     tanstack query
+
+for input validation -
+ zod
+
+------------------------
+
+for security headers and gzip responses -
+
+helmet
+compression
+
+=============================
+
+for logger implimentation-
+
+pino
+
+--------------------------

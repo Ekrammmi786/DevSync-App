@@ -6,10 +6,15 @@ import cookieParser from "cookie-parser";
 import { connectDB } from "./lib/db.js";
 import cors from "cors";
 import chatroutes from "./routes/chat.routes.js";
-
+import compression from "compression";
+import helmet from "helmet";
+import mongoose from "mongoose";
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+
+// app.use(helmet());
+app.use(compression());
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -65,7 +70,27 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
+
+
+const gracefulShutdown = async (signal) => {
+  console.log(`\n${signal} received. Shutting down gracefully...`);
+  server.close(async () => {
+    await mongoose.connection.close();
+    console.log("MongoDB connection closed.");
+    process.exit(0);
+  });
+  
+  // Force close after 10 seconds
+  setTimeout(() => {
+    console.error("Forced shutdown after timeout");
+    process.exit(1);
+  }, 10000);
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   connectDB();
 });
