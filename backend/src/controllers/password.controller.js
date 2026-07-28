@@ -1,6 +1,6 @@
 import User from "../models/User.js";
 import { generateOTP,hashOTP,verifyOTP,isOTPExpired } from "../services/otp.services.js";
-import { sendOtpEmail } from "../services/email.services.js";
+import { sendPasswordResetEmail } from "../services/email.services.js";
 import ApiError from "../utils/Apierror.js";
 import AsyncHandler from "../utils/asyncHandler.js";
 
@@ -69,14 +69,13 @@ export const resetPassword = AsyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(user._id, { $inc: { otpAttempts: 1 } });
     throw new ApiError(400, "Invalid OTP", "INVALID_OTP");
   }
+
   user.password = newPassword;
   user.otpHash = undefined;
   user.otpExpiry = undefined;
   user.otpAttempts = undefined;
   user.otpResendCount = undefined;
   user.otpResendWindowStart = undefined;
-  await user.save();
-
   user.refreshToken = null;
   await user.save();
 
@@ -85,49 +84,3 @@ export const resetPassword = AsyncHandler(async (req, res) => {
     data: { message: "Password reset successfully. Please login with your new password." },
   });
 });
-
-    const sendPasswordResetEmail = async (email, otp) => {
-  const nodemailer = (await import("nodemailer")).default;
-
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT),
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-
-  const mailOptions = {
-    from: process.env.EMAIL_FROM,
-    to: email,
-    subject: "DevSync - Password Reset OTP",
-    html: `
-<div style="background:#eef2f7;padding:50px 20px;font-family:Arial,Helvetica,sans-serif;">
-  <div style="max-width:500px;margin:auto;background:#eef2f7;border-radius:25px;padding:40px;text-align:center;
-      box-shadow:12px 12px 24px #cfd5df,-12px -12px 24px #ffffff;">
-    <h2 style="color:#1e3a8a;margin-bottom:25px;">Reset Your Password</h2>
-    <p style="color:#6b7280;margin-bottom:20px;">Use this OTP to reset your password</p>
-    <div style="display:inline-block;padding:18px 45px;border-radius:18px;background:#eef2f7;color:#2563eb;
-        font-size:34px;font-weight:bold;letter-spacing:8px;
-        box-shadow:inset 6px 6px 12px #cfd5df,inset -6px -6px 12px #ffffff,
-        6px 6px 15px rgba(0,0,0,.08),-6px -6px 15px rgba(255,255,255,.9);">
-      ${otp}
-    </div>
-    <p style="margin-top:30px;color:#6b7280;">Valid for <strong>10 minutes</strong></p>
-    <p style="color:#9ca3af;font-size:12px;">If you didn't request this, please ignore this email.</p>
-  </div>`,
-  };
-
-  
-  await transporter.sendMail(mailOptions);
-
-
-
-};
-
-
-
-
-
-

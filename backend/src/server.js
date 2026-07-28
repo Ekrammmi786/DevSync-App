@@ -39,8 +39,8 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error("Unhandled Error:", err);
 
-  if (err.StatusCode) {
-    return res.status(err.StatusCode).json({
+  if (err.statusCode) {
+    return res.status(err.statusCode).json({
       success: false,
       message: err.message,
       code: err.code,
@@ -70,6 +70,10 @@ app.use((err, req, res, next) => {
   });
 });
 
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  connectDB();
+});
 
 
 const gracefulShutdown = async (signal) => {
@@ -90,7 +94,4 @@ const gracefulShutdown = async (signal) => {
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  connectDB();
-});
+
