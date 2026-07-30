@@ -50,7 +50,13 @@ const userSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
+
     ],
+    isAdmin:{
+      type: Boolean,
+      default: false,
+    },
+
     isVerified: { type: Boolean, default: false },
     otpHash: { type: String, default: null, select: false },
     otpExpiry: { type: Date, default: null, select: false },
@@ -77,7 +83,6 @@ userSchema.pre("save", async function (next) {
   }
 });
 
-userSchema.index({email:1});
 userSchema.index({fullname:1});
 userSchema.index({isOnBoarded:1});
 
