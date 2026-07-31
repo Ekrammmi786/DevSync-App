@@ -1,4 +1,5 @@
 import AppSettings from "../models/AppSettings.js";
+import { getCache, setCache } from "../lib/cache.js";
 
 export const adminOnly = (req, res, next) => {
     if (!req.user || !req.user.isAdmin) {
@@ -16,7 +17,14 @@ export const maintenanceCheck = async (req, res, next) => {
         return next();
     }
     try {
-        const settings = await AppSettings.findOne();
+        const cacheKey = "admin-settings";
+        let settings = getCache(cacheKey);
+        if (!settings) {
+            settings = await AppSettings.findOne();
+            if (settings) {
+                setCache(cacheKey, settings, 600);
+            }
+        }
         if (settings && settings.maintenanceMode) {
             if (req.user && req.user.isAdmin) {
                 return next();

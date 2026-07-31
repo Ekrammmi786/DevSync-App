@@ -3,6 +3,7 @@ import FriendRequest from "../models/FriendRequest.js";
 import AppSettings from "../models/AppSettings.js";
 import AsyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/Apierror.js";
+import { getCache, setCache, delCache, delCacheByPattern, flushCache } from "../lib/cache.js";
 import "dotenv/config";
 
 export const seedAdmin = AsyncHandler(async (req, res) => {
@@ -23,6 +24,8 @@ export const seedAdmin = AsyncHandler(async (req, res) => {
     if (!existingSettings) {
         await AppSettings.create({});
     }
+    delCache("admin-dashboard");
+    delCacheByPattern("admin-users-");
     res.json({
         success: true,
         data: { message: `${user.fullname} is now admin` }
@@ -30,6 +33,11 @@ export const seedAdmin = AsyncHandler(async (req, res) => {
 });
 
 export const getDashboard = AsyncHandler(async (req, res) => {
+    const cacheKey = "admin-dashboard";
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return res.json({ success: true, data: cached, source: "cache" });
+    }
     const totalUsers = await User.countDocuments();
     const verifiedUsers = await User.countDocuments({ isVerified: true });
     const onboardedUsers = await User.countDocuments({ isOnBoarded: true });
@@ -41,19 +49,23 @@ export const getDashboard = AsyncHandler(async (req, res) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayUsers = await User.countDocuments({ createdAt: { $gte: todayStart } });
-    res.json({
-        success: true,
-        data: {
-            users: { total: totalUsers, verified: verifiedUsers, onboarded: onboardedUsers, admins: adminCount, today: todayUsers },
-            friendRequests: { total: totalFriendRequests, pending: pendingRequests, accepted: acceptedRequests, rejected: rejectedRequests }
-        }
-    });
+    const data = {
+        users: { total: totalUsers, verified: verifiedUsers, onboarded: onboardedUsers, admins: adminCount, today: todayUsers },
+        friendRequests: { total: totalFriendRequests, pending: pendingRequests, accepted: acceptedRequests, rejected: rejectedRequests }
+    };
+    setCache(cacheKey, data, 300);
+    res.json({ success: true, data, source: "database" });
 });
 
 export const getUsers = AsyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = parseInt(req.query.skip) || 0;
-    const { search, isAdmin, isVerified, isOnBoarded } = req.query;
+    const { search = "", isAdmin, isVerified, isOnBoarded } = req.query;
+    const cacheKey = `admin-users-${search}-${isAdmin || "all"}-${isVerified || "all"}-${isOnBoarded || "all"}-${limit}-${skip}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return res.json({ success: true, data: cached.data, pagination: cached.pagination, source: "cache" });
+    }
     const filter = {};
     if (search) {
         filter.$or = [
@@ -69,8 +81,7 @@ export const getUsers = AsyncHandler(async (req, res) => {
         .select("-password -refreshToken -otpHash -otpExpiry -otpAttempts -otpResendCount -otpResendWindowStart")
         .sort({ createdAt: -1 });
     const total = await User.countDocuments(filter);
-    res.json({
-        success: true,
+    const responseData = {
         data: users,
         pagination: {
             page: Math.floor(skip / limit) + 1,
@@ -78,15 +89,23 @@ export const getUsers = AsyncHandler(async (req, res) => {
             totalPages: Math.ceil(total / limit),
             hasMore: skip + limit < total
         }
-    });
+    };
+    setCache(cacheKey, responseData, 60);
+    res.json({ success: true, ...responseData, source: "database" });
 });
 
 export const getUserById = AsyncHandler(async (req, res) => {
+    const cacheKey = `admin-user-${req.params.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return res.json({ success: true, data: cached, source: "cache" });
+    }
     const user = await User.findById(req.params.id)
         .select("-password -refreshToken -otpHash -otpExpiry -otpAttempts -otpResendCount -otpResendWindowStart")
         .populate("friends", "fullname email profilePic");
     if (!user) throw new ApiError(404, "User not found", "USER_NOT_FOUND");
-    res.json({ success: true, data: user });
+    setCache(cacheKey, user, 60);
+    res.json({ success: true, data: user, source: "database" });
 });
 
 export const createUser = AsyncHandler(async (req, res) => {
@@ -107,6 +126,8 @@ export const createUser = AsyncHandler(async (req, res) => {
         isVerified: markVerified || false,
         isOnBoarded: true,
     });
+    delCache("admin-dashboard");
+    delCacheByPattern("admin-users-");
     res.status(201).json({ success: true, data: user });
 });
 
@@ -125,6 +146,9 @@ export const updateUser = AsyncHandler(async (req, res) => {
     const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true })
         .select("-password -refreshToken -otpHash -otpExpiry -otpAttempts -otpResendCount -otpResendWindowStart");
     if (!user) throw new ApiError(404, "User not found", "USER_NOT_FOUND");
+    delCache(`admin-user-${req.params.id}`);
+    delCache("admin-dashboard");
+    delCacheByPattern("admin-users-");
     res.json({ success: true, data: user });
 });
 
@@ -134,6 +158,9 @@ export const deleteUser = AsyncHandler(async (req, res) => {
     await User.updateMany({ friends: user._id }, { $pull: { friends: user._id } });
     await FriendRequest.deleteMany({ $or: [{ sender: user._id }, { recipient: user._id }] });
     await User.findByIdAndDelete(user._id);
+    delCache(`admin-user-${user._id}`);
+    delCache("admin-dashboard");
+    delCacheByPattern("admin-users-");
     res.json({ success: true, data: { message: "User deleted successfully" } });
 });
 
@@ -145,6 +172,9 @@ export const toggleAdmin = AsyncHandler(async (req, res) => {
     }
     user.isAdmin = !user.isAdmin;
     await user.save();
+    delCache(`admin-user-${user._id}`);
+    delCache("admin-dashboard");
+    delCacheByPattern("admin-users-");
     res.json({ success: true, data: { message: `admin role ${user.isAdmin ? "granted" : "removed"}`, isAdmin: user.isAdmin } });
 });
 
@@ -152,6 +182,11 @@ export const getFriendRequests = AsyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = parseInt(req.query.skip) || 0;
     const { status, sender, recipient } = req.query;
+    const cacheKey = `admin-friend-requests-${status || "all"}-${sender || "all"}-${recipient || "all"}-${limit}-${skip}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return res.json({ success: true, data: cached.data, pagination: cached.pagination, source: "cache" });
+    }
     const filter = {};
     if (status) filter.status = status;
     if (sender) filter.sender = sender;
@@ -162,8 +197,7 @@ export const getFriendRequests = AsyncHandler(async (req, res) => {
         .populate("recipient", "fullname email profilePic")
         .sort({ createdAt: -1 });
     const total = await FriendRequest.countDocuments(filter);
-    res.json({
-        success: true,
+    const responseData = {
         data: requests,
         pagination: {
             page: Math.floor(skip / limit) + 1,
@@ -171,15 +205,23 @@ export const getFriendRequests = AsyncHandler(async (req, res) => {
             totalPages: Math.ceil(total / limit),
             hasMore: skip + limit < total
         }
-    });
+    };
+    setCache(cacheKey, responseData, 60);
+    res.json({ success: true, ...responseData, source: "database" });
 });
 
 export const getSettings = AsyncHandler(async (req, res) => {
+    const cacheKey = "admin-settings";
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return res.json({ success: true, data: cached, source: "cache" });
+    }
     let settings = await AppSettings.findOne();
     if (!settings) {
         settings = await AppSettings.create({});
     }
-    res.json({ success: true, data: settings });
+    setCache(cacheKey, settings, 600);
+    res.json({ success: true, data: settings, source: "database" });
 });
 
 export const updateSettings = AsyncHandler(async (req, res) => {
@@ -196,6 +238,7 @@ export const updateSettings = AsyncHandler(async (req, res) => {
     } else {
         settings = await AppSettings.findByIdAndUpdate(settings._id, updateData, { new: true, runValidators: true });
     }
+    delCache("admin-settings");
     res.json({ success: true, data: settings });
 });
 
@@ -207,6 +250,8 @@ export const shutdownServer = AsyncHandler(async (req, res) => {
         settings.maintenanceMessage = message || "Server is under maintenance. Please try again later.";
         await settings.save();
     }
+    delCache("admin-settings");
+    delCache("admin-dashboard");
     res.json({ success: true, data: { message: "Server shutting down..." } });
     setTimeout(() => {
         process.emit("SIGTERM");
@@ -236,3 +281,4 @@ export const getHealth = AsyncHandler(async (req, res) => {
         }
     });
 });
+

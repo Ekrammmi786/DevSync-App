@@ -1,11 +1,21 @@
 import User from "../models/User.js";
 import FriendRequest from "../models/FriendRequest.js";
 import AsyncHandler from "../utils/asyncHandler.js";
+import { getCache, setCache, delCache, delCacheByPattern } from "../lib/cache.js";
 
-   export const getRecommendedUser = AsyncHandler(async(req,res)=>{
+export const getRecommendedUser = AsyncHandler(async(req,res)=>{
     const limit = parseInt(req.query.limit)||20;
     const skip = parseInt(req.query.skip)||0;
-    
+    const cacheKey = `recommend-${req.user._id}-${limit}-${skip}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return res.status(200).json({
+            success: true,
+            data: cached.data,
+            pagination: cached.pagination,
+            source: "cache",
+        });
+    }
     const currentUser = await User.findById(req.user._id);
     const recommendedUsers = await User.aggregate([
       {
@@ -37,8 +47,7 @@ import AsyncHandler from "../utils/asyncHandler.js";
   _id: { $ne: currentUser._id, $nin: currentUser.friends },
   isOnBoarded: true
 });
-    res.status(200).json({
-      success: true,
+    const responseData = {
       data: recommendedUsers,
       pagination: {
         page: Math.floor(skip / limit) + 1,
@@ -47,6 +56,12 @@ import AsyncHandler from "../utils/asyncHandler.js";
         totalPages: Math.ceil(total / limit),
         hasMore: skip + limit < total,
       },
+    };
+    setCache(cacheKey, responseData, 30);
+    res.status(200).json({
+      success: true,
+      ...responseData,
+      source: "database",
     });
   });
 
@@ -54,6 +69,16 @@ export async function getMyFriends(req, res) {
   try {
     const limit = parseInt(req.query.limit) || 20;
     const skip = parseInt(req.query.skip) || 0;
+    const cacheKey = `friends-${req.user._id}-${limit}-${skip}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+      return res.status(200).json({
+        success: true,
+        data: cached.data,
+        pagination: cached.pagination,
+        source: "cache",
+      });
+    }
 
     const user = await User.findById(req.user._id)
       .select("friends")
@@ -67,8 +92,7 @@ export async function getMyFriends(req, res) {
       .select("friends")
       .then((u) => u.friends.length);
 
-    res.status(200).json({
-      success: true,
+    const responseData = {
       data: user.friends,
       pagination: {
         page: Math.floor(skip / limit) + 1,
@@ -77,6 +101,12 @@ export async function getMyFriends(req, res) {
         totalPages: Math.ceil(total / limit),
         hasMore: skip + limit < total,
       },
+    };
+    setCache(cacheKey, responseData, 60);
+    res.status(200).json({
+      success: true,
+      ...responseData,
+      source: "database",
     });
   } catch (error) {
     console.error("error in getmyfriends Controller ", error.message);
@@ -92,6 +122,16 @@ export async function getFriendRequests(req, res) {
   try {
     const limit = parseInt(req.query.limit) || 20;
     const skip = parseInt(req.query.skip) || 0;
+    const cacheKey = `incoming-requests-${req.user._id}-${limit}-${skip}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+      return res.status(200).json({
+        success: true,
+        data: cached.data,
+        pagination: cached.pagination,
+        source: "cache",
+      });
+    }
 
     const filter = { recipient: req.user._id, status: "pending" };
 
@@ -105,8 +145,7 @@ export async function getFriendRequests(req, res) {
 
     const total = await FriendRequest.countDocuments(filter);
 
-    return res.status(200).json({
-      success: true,
+    const responseData = {
       data: incomingReqs,
       pagination: {
         page: Math.floor(skip / limit) + 1,
@@ -115,6 +154,12 @@ export async function getFriendRequests(req, res) {
         totalPages: Math.ceil(total / limit),
         hasMore: skip + limit < total,
       },
+    };
+    setCache(cacheKey, responseData, 60);
+    return res.status(200).json({
+      success: true,
+      ...responseData,
+      source: "database",
     });
   } catch (error) {
     console.error("error in getFriendRequests controller", error.message);
@@ -185,6 +230,11 @@ export async function sendFriendRequest(req, res) {
       recipient: recipientId,
     });
 
+    delCacheByPattern(`incoming-requests-${recipientId}`);
+    delCacheByPattern(`outgoing-requests-${myId}`);
+    delCacheByPattern(`recommend-${myId}`);
+    delCacheByPattern(`search-${myId}`);
+
     return res.status(201).json({
       success: true,
       data: friendrequest,
@@ -201,6 +251,15 @@ export async function sendFriendRequest(req, res) {
 
 export async function getOutgoingFriendReqs(req, res) {
   try {
+    const cacheKey = `outgoing-requests-${req.user._id}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+      return res.status(200).json({
+        success: true,
+        data: cached,
+        source: "cache",
+      });
+    }
     const outgoingRequests = await FriendRequest.find({
       sender: req.user._id,
       status: "pending",
@@ -209,9 +268,11 @@ export async function getOutgoingFriendReqs(req, res) {
       "fullname profilePic codinglanguage learninglanguage role"
     );
 
+    setCache(cacheKey, outgoingRequests, 60);
     return res.status(200).json({
       success: true,
       data: outgoingRequests,
+      source: "database",
     });
   } catch (error) {
     console.error("error in getOutgoingFriendReqs controller", error.message);
@@ -256,6 +317,19 @@ export async function acceptFriendRequest(req, res) {
       $addToSet: { friends: friendRequestDoc.recipient },
     });
 
+    const senderId = friendRequestDoc.sender.toString();
+    const recipientId = friendRequestDoc.recipient.toString();
+    delCacheByPattern(`friends-${senderId}`);
+    delCacheByPattern(`friends-${recipientId}`);
+    delCacheByPattern(`incoming-requests-${recipientId}`);
+    delCacheByPattern(`outgoing-requests-${senderId}`);
+    delCacheByPattern(`recommend-${senderId}`);
+    delCacheByPattern(`recommend-${recipientId}`);
+    delCacheByPattern(`search-${senderId}`);
+    delCacheByPattern(`search-${recipientId}`);
+    delCache("admin-dashboard");
+    delCacheByPattern("admin-friend-requests-");
+
     res.status(200).json({
       success: true,
       data: { message: "Friend request accepted" },
@@ -295,6 +369,11 @@ export async function rejectfriend(req, res) {
     friendRequestDoc.status = "rejected";
     await friendRequestDoc.save();
 
+    delCacheByPattern(`incoming-requests-${req.user._id}`);
+    delCacheByPattern(`outgoing-requests-${req.user._id}`);
+    delCache("admin-dashboard");
+    delCacheByPattern("admin-friend-requests-");
+
     return res.status(200).json({
       success: true,
       data: { message: "Friend request rejected" },
@@ -315,6 +394,16 @@ export async function searchUsers(req, res) {
 
     const limit = parseInt(req.query.limit) || 20;
     const skip = parseInt(req.query.skip) || 0;
+    const cacheKey = `search-${req.user._id}-${fullname}-${role}-${limit}-${skip}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+      return res.status(200).json({
+        success: true,
+        data: cached.data,
+        pagination: cached.pagination,
+        source: "cache",
+      });
+    }
 
     const searchQuery = {};
 
@@ -359,8 +448,7 @@ export async function searchUsers(req, res) {
       return { ...user, friendStatus };
     });
 
-    return res.status(200).json({
-      success: true,
+    const responseData = {
       data: usersWithStatus,
       pagination: {
         page: Math.floor(skip / limit) + 1,
@@ -369,6 +457,12 @@ export async function searchUsers(req, res) {
         totalPages: Math.ceil(total / limit),
         hasMore: skip + limit < total,
       },
+    };
+    setCache(cacheKey, responseData, 30);
+    return res.status(200).json({
+      success: true,
+      ...responseData,
+      source: "database",
     });
   } catch (error) {
     console.log("error in searching users", error.message);
