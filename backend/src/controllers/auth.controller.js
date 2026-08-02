@@ -4,9 +4,10 @@ import "dotenv/config";
 import { upsertStreamUser } from "../lib/stream.js";
 import { generateOTP, hashOTP } from "../services/otp.services.js";
 import { sendOtpEmail } from "../services/email.services.js";
+import { calculateDevScore } from "../services/devScore.service.js";
 
 export async function signup(req, res) {
-  const { email, password, fullname } = req.body;
+  const { email, password, fullname, role = "", techStack = [] } = req.body;
 
   try {
     if (!email || !password || !fullname) {
@@ -53,6 +54,8 @@ export async function signup(req, res) {
       fullname,
       password,
       profilePic: randomAvatar,
+      role,
+      techStack,
     });
 
     try {
@@ -79,13 +82,13 @@ export async function signup(req, res) {
     const accessToken = jwt.sign(
       { userId: newUser._id },
       process.env.JWT_SECRET_KEY,
-      { expiresIn: "15m" }
+      { expiresIn: "15m" },
     );
 
     const refreshToken = jwt.sign(
       { userId: newUser._id },
       process.env.JWT_REFRESH_SECRET_KEY || process.env.JWT_SECRET_KEY,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     await User.findByIdAndUpdate(newUser._id, { refreshToken });
@@ -163,13 +166,13 @@ export async function login(req, res) {
     const accessToken = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET_KEY,
-      { expiresIn: "15m" }
+      { expiresIn: "15m" },
     );
 
     const refreshToken = jwt.sign(
       { userId: user._id },
       process.env.JWT_REFRESH_SECRET_KEY || process.env.JWT_SECRET_KEY,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     await User.findByIdAndUpdate(user._id, { refreshToken });
@@ -237,7 +240,7 @@ export async function refreshToken(req, res) {
     try {
       decoded = jwt.verify(
         incomingRefreshToken,
-        process.env.JWT_REFRESH_SECRET_KEY || process.env.JWT_SECRET_KEY
+        process.env.JWT_REFRESH_SECRET_KEY || process.env.JWT_SECRET_KEY,
       );
     } catch (err) {
       return res.status(401).json({
@@ -249,7 +252,11 @@ export async function refreshToken(req, res) {
 
     const user = await User.findById(decoded.userId).select("+refreshToken");
 
-    if (!user || !user.refreshToken || user.refreshToken !== incomingRefreshToken) {
+    if (
+      !user ||
+      !user.refreshToken ||
+      user.refreshToken !== incomingRefreshToken
+    ) {
       return res.status(401).json({
         success: false,
         message: "Refresh token revoked or user not found",
@@ -260,7 +267,7 @@ export async function refreshToken(req, res) {
     const newAccessToken = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET_KEY,
-      { expiresIn: "15m" }
+      { expiresIn: "15m" },
     );
 
     res.cookie("jwt", newAccessToken, {
@@ -287,9 +294,33 @@ export async function refreshToken(req, res) {
 export async function onboard(req, res) {
   try {
     const userId = req.user._id;
-    const { fullname, bio, codingLanguage, learningLanguage, location, role } = req.body;
+    const {
+      fullname,
+      bio,
+      codingLanguage,
+      learningLanguage,
+      location,
+      role,
+      techStack,
+      interests,
+      lookingFor,
+      availability,
+      timezone,
+      githubUsername,
+      linkedinUsername,
+      portfolioUrl,
+      experience,
+    } = req.body;
 
-    if (!fullname || !bio || !codingLanguage || !learningLanguage || !location || !role) {
+    if (
+      !fullname ||
+      !bio ||
+      !codingLanguage ||
+      !learningLanguage ||
+      !location ||
+      !role || !techStack ||
+      !interests
+    ) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -306,9 +337,18 @@ export async function onboard(req, res) {
         learninglanguage: learningLanguage,
         location,
         role,
+        techStack: techStack || [],
+        interests: interests || [],
+        lookingFor: lookingFor || "learning Buddy",
+        availability: availability || "Occasional",
+        timezone: timezone || "",
+        githubUsername: githubUsername || "",
+        linkedinUsername: linkedinUsername || "",
+        portfolioUrl: portfolioUrl || "",
+        experience: experience || "",
         isOnBoarded: true,
       },
-      { new: true }
+      { new: true },
     );
 
     if (!updatedUser) {
@@ -318,6 +358,17 @@ export async function onboard(req, res) {
         code: "USER_NOT_FOUND",
       });
     }
+
+    const devScoreResult = calculateDevScore(updatedUser);
+
+    const finalUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        devScore: devScoreResult.score,
+        badges: devScoreResult.badges,
+      },
+      { new: true },
+    );
 
     try {
       await upsertStreamUser({
@@ -331,7 +382,15 @@ export async function onboard(req, res) {
 
     return res.status(200).json({
       success: true,
-      data: updatedUser,
+      data: {
+        user: finalUser,
+        devScore: {
+          score: devScoreResult.score,
+          breakdown: devScoreResult.breakdown,
+          badges: devScoreResult.badges,
+          missingFields: devScoreResult.missingFields,
+        },
+      },
     });
   } catch (error) {
     console.error(error);

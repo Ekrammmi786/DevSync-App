@@ -21,7 +21,7 @@ export const forgotPassword = AsyncHandler(async(req,res)=>{
     const otp = generateOTP();
     await User.findByIdAndUpdate(user._id,{
             otpHash: hashOTP(otp),
-            otpExpiry: new Date(Date.now() + 10 * 60 * 1000), // 10 min valid
+            otpExpiry: new Date(Date.now() + 10 * 60 * 1000),
             otpAttempts: 0,
             otpResendCount: 0,
             otpResendWindowStart: null,  
@@ -60,7 +60,6 @@ export const resetPassword = AsyncHandler(async (req, res) => {
   );
   if (!user) throw new ApiError(400, "Invalid request", "INVALID_REQUEST");
 
-  // OTP validation
   if (!user.otpHash) throw new ApiError(400, "No OTP requested", "NO_OTP");
   if (isOTPExpired(user.otpExpiry)) throw new ApiError(400, "OTP expired", "OTP_EXPIRED");
   if (user.otpAttempts >= 5) throw new ApiError(429, "Too many attempts", "MAX_ATTEMPTS");

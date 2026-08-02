@@ -1,69 +1,166 @@
 import User from "../models/User.js";
 import FriendRequest from "../models/FriendRequest.js";
 import AsyncHandler from "../utils/asyncHandler.js";
-import { getCache, setCache, delCache, delCacheByPattern } from "../lib/cache.js";
+import {
+  getCache,
+  setCache,
+  delCache,
+  delCacheByPattern,
+} from "../lib/cache.js";
+import { calculateDevScore } from "../services/devScore.service.js";
 
-export const getRecommendedUser = AsyncHandler(async(req,res)=>{
-    const limit = parseInt(req.query.limit)||20;
-    const skip = parseInt(req.query.skip)||0;
-    const cacheKey = `recommend-${req.user._id}-${limit}-${skip}`;
-    const cached = getCache(cacheKey);
-    if (cached) {
-        return res.status(200).json({
-            success: true,
-            data: cached.data,
-            pagination: cached.pagination,
-            source: "cache",
-        });
-    }
-    const currentUser = await User.findById(req.user._id);
-    const recommendedUsers = await User.aggregate([
-      {
-        $match:{
-          _id:{$ne:currentUser._id,$nin:
-            currentUser.friends
-          },
-          isOnBoarded:true,
-        },
+export const getLeaderboard = AsyncHandler(async (req, res) => {
+  const limit = parseInt(req.query.limit) || 20;
+  const skip = parseInt(req.query.skip) || 0;
+  const cacheKey = `leaderboard-${limit}-${skip}`;
+  const cached = getCache(cacheKey);
+  if (cached) {
+    return res.status(200).json({
+      success: true,
+      data: cached.data,
+      pagination: cached.pagination,
+      source: "cache",
+    });
+  }
+
+  const users = await User.find({ isOnBoarded: true, devScore: { $gt: 0 } })
+    .sort({ devScore: -1, createdAt: 1 })
+    .skip(skip)
+    .limit(limit)
+    .select(
+      "fullname profilePic role codinglanguage techStack devScore badges location experience",
+    )
+    .lean();
+
+  const total = await User.countDocuments({
+    isOnBoarded: true,
+    devScore: { $gt: 0 },
+  });
+
+  const responseData = {
+    data: users,
+    pagination: {
+      page: Math.floor(skip / limit) + 1,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasMore: skip + limit < total,
+    },
+  };
+  setCache(cacheKey, responseData, 60);
+  return res.status(200).json({
+    success: true,
+    ...responseData,
+    source: "database",
+  });
+});
+
+export const getMyDevScore = AsyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+      code: "USER_NOT_FOUND",
+    });
+  }
+
+  const result = calculateDevScore(user);
+
+  const higherCount = await User.countDocuments({
+    isOnBoarded: true,
+    devScore: { $gt: result.score },
+  });
+  const rank = higherCount + 1;
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      score: result.score,
+      rank,
+      breakdown: result.breakdown,
+      badges: result.badges,
+      missingFields: result.missingFields,
+    },
+  });
+});
+
+export const getRecommendedUser = AsyncHandler(async (req, res) => {
+  const limit = parseInt(req.query.limit) || 20;
+  const skip = parseInt(req.query.skip) || 0;
+  const cacheKey = `recommend-${req.user._id}-${limit}-${skip}`;
+  const cached = getCache(cacheKey);
+  if (cached) {
+    return res.status(200).json({
+      success: true,
+      data: cached.data,
+      pagination: cached.pagination,
+      source: "cache",
+    });
+  }
+  const currentUser = await User.findById(req.user._id);
+  const recommendedUsers = await User.aggregate([
+    {
+      $match: {
+        _id: { $ne: currentUser._id, $nin: currentUser.friends },
+        isOnBoarded: true,
       },
-      {
-        $addFields:{
-          relevanceScore: {
+    },
+    {
+      $addFields: {
+        relevanceScore: {
           $add: [
-            { $cond: [{ $eq: ["$codinglanguage", currentUser.codinglanguage] }, 3, 0] },
+            {
+              $cond: [
+                {
+                  $gt: [
+                    {
+                      $size: {
+                        $setIntersection: [
+                          "$codinglanguage",
+                          currentUser.codinglanguage,
+                        ],
+                      },
+                    },
+                    0,
+                  ],
+                },
+                3,
+                0,
+              ],
+            },
             { $cond: [{ $eq: ["$location", currentUser.location] }, 2, 0] },
             { $cond: [{ $eq: ["$role", currentUser.role] }, 1, 0] },
           ],
         },
+      },
+    },
+    { $sort: { relevanceScore: -1 } },
+    { $skip: skip },
+    { $limit: limit },
+  ]);
 
-        },
-      },
-        { $sort: { relevanceScore: -1 } },
-        { $skip: skip },
-        { $limit: limit },
-    ]);
-    
-    const total = await User.countDocuments({
-  _id: { $ne: currentUser._id, $nin: currentUser.friends },
-  isOnBoarded: true
-});
-    const responseData = {
-      data: recommendedUsers,
-      pagination: {
-        page: Math.floor(skip / limit) + 1,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-        hasMore: skip + limit < total,
-      },
-    };
-    setCache(cacheKey, responseData, 30);
-    res.status(200).json({
-      success: true,
-      ...responseData,
-      source: "database",
-    });
+  const total = await User.countDocuments({
+    _id: { $ne: currentUser._id, $nin: currentUser.friends },
+    isOnBoarded: true,
   });
+  const responseData = {
+    data: recommendedUsers,
+    pagination: {
+      page: Math.floor(skip / limit) + 1,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasMore: skip + limit < total,
+    },
+  };
+  setCache(cacheKey, responseData, 30);
+  res.status(200).json({
+    success: true,
+    ...responseData,
+    source: "database",
+  });
+});
 
 export async function getMyFriends(req, res) {
   try {
@@ -80,13 +177,12 @@ export async function getMyFriends(req, res) {
       });
     }
 
-    const user = await User.findById(req.user._id)
-      .select("friends")
-      .populate({
-        path: "friends",
-        select: "fullname profilePic codingLanguage learningLanguage role",
-        options: { skip, limit },
-      });
+    const user = await User.findById(req.user._id).select("friends").populate({
+      path: "friends",
+      select:
+        "fullname profilePic codinglanguage learninglanguage role techStack interests devScore badges experience",
+      options: { skip, limit },
+    });
 
     const total = await User.findById(req.user._id)
       .select("friends")
@@ -140,7 +236,7 @@ export async function getFriendRequests(req, res) {
       .limit(limit)
       .populate(
         "sender",
-        "fullname profilePic codinglanguage learninglanguage role"
+        "fullname profilePic codinglanguage learninglanguage role techStack interests devScore badges location experience",
       );
 
     const total = await FriendRequest.countDocuments(filter);
@@ -265,7 +361,7 @@ export async function getOutgoingFriendReqs(req, res) {
       status: "pending",
     }).populate(
       "recipient",
-      "fullname profilePic codinglanguage learninglanguage role"
+      "fullname profilePic codinglanguage learninglanguage role techStack interests devScore badges location experience",
     );
 
     setCache(cacheKey, outgoingRequests, 60);
@@ -420,12 +516,16 @@ export async function searchUsers(req, res) {
     const users = await User.find(searchQuery)
       .skip(skip)
       .limit(limit)
-      .select("fullname profilePic codinglanguage learninglanguage role location bio")
+      .select(
+        "fullname profilePic codinglanguage learninglanguage role location bio techStack interests devScore badges experience",
+      )
       .lean();
 
     const total = await User.countDocuments(searchQuery);
 
-    const currentUser = await User.findById(req.user._id).select("friends").lean();
+    const currentUser = await User.findById(req.user._id)
+      .select("friends")
+      .lean();
     const friendIds = currentUser.friends.map((id) => id.toString());
 
     const pendingRequests = await FriendRequest.find({
@@ -438,13 +538,14 @@ export async function searchUsers(req, res) {
     const pendingIds = pendingRequests.map((r) =>
       r.sender.toString() === req.user._id.toString()
         ? r.recipient.toString()
-        : r.sender.toString()
+        : r.sender.toString(),
     );
 
     const usersWithStatus = users.map((user) => {
       let friendStatus = "none";
       if (friendIds.includes(user._id.toString())) friendStatus = "friends";
-      else if (pendingIds.includes(user._id.toString())) friendStatus = "pending";
+      else if (pendingIds.includes(user._id.toString()))
+        friendStatus = "pending";
       return { ...user, friendStatus };
     });
 

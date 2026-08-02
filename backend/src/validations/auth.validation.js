@@ -9,6 +9,9 @@ export const signupSchema = z.object({
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
     .regex(/[0-9]/, "Password must contain at least one number"),
   fullname: z.string().min(2, "Full name must be at least 2 characters").max(50),
+  role: z.string().optional().default(""),
+  techStack: z.array(z.string()).optional().default([]),
+
 });
 
 export const loginSchema = z.object({
