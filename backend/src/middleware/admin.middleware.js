@@ -13,7 +13,13 @@ export const adminOnly = (req, res, next) => {
 };
 
 export const maintenanceCheck = async (req, res, next) => {
-    if (req.path.startsWith("/api/admin")) {
+    // Allow admin routes + login + refresh during maintenance
+    // (login/refresh needed so admin can authenticate and turn OFF maintenance)
+    const isAllowedPath =
+        req.path.startsWith("/api/admin") ||
+        req.path === "/api/auth/login" ||
+        req.path === "/api/auth/refresh";
+    if (isAllowedPath) {
         return next();
     }
     try {

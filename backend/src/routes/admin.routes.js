@@ -14,6 +14,8 @@ import {
   getSettings,
   updateSettings,
   shutdownServer,
+  setMaintenance,
+  maintenanceOff,
   getHealth,
 } from "../controllers/admin.controller.js";
 
@@ -34,6 +36,8 @@ router.get("/friend-requests", getFriendRequests);
 router.get("/settings", getSettings);
 router.put("/settings", updateSettings);
 router.post("/shutdown", shutdownServer);
+router.post("/maintenance", setMaintenance);
+router.post("/maintenance/off", maintenanceOff);
 router.get("/health", getHealth);
 
 export default router;

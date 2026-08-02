@@ -12,6 +12,7 @@ import {
 } from "../lib/cache.js";
 import "dotenv/config";
 
+
 export const seedAdmin = AsyncHandler(async (req, res) => {
     const { email, secretKey } = req.body;
     if (secretKey !== process.env.ADMIN_SECRET_KEY) {
@@ -393,6 +394,7 @@ export const shutdownServer = AsyncHandler(async (req, res) => {
             message || "Server is under maintenance. Please try again later.";
         await settings.save();
     }
+
     delCache("admin-settings");
     delCache("admin-dashboard");
     res.json({ success: true, data: { message: "Server shutting down..." } });
@@ -400,6 +402,58 @@ export const shutdownServer = AsyncHandler(async (req, res) => {
         process.emit("SIGTERM");
     }, 1000);
 });
+
+export const setMaintenance = AsyncHandler(async (req, res) => {
+    const { maintenanceMode, maintenanceMessage } = req.body;
+    if (maintenanceMode === undefined) {
+        throw new ApiError(400, "maintenanceMode is required", "FIELDS_REQUIRED");
+    }
+    let settings = await AppSettings.findOne();
+    if (!settings) {
+        settings = await AppSettings.create({
+            maintenanceMode,
+            maintenanceMessage: maintenanceMessage || undefined,
+        });
+    } else {
+        settings.maintenanceMode = maintenanceMode;
+        if (maintenanceMessage !== undefined) {
+            settings.maintenanceMessage = maintenanceMessage;
+        }
+        await settings.save();
+    }
+    delCache("admin-settings");
+    delCache("admin-dashboard");
+    res.json({
+        success: true,
+        data: {
+            maintenanceMode: settings.maintenanceMode,
+            maintenanceMessage: settings.maintenanceMessage,
+            message: maintenanceMode
+                ? "Maintenance mode is ON"
+                : "Maintenance mode is OFF",
+        },
+    });
+});
+
+export const maintenanceOff = AsyncHandler(async (req, res) => {
+    let settings = await AppSettings.findOne();
+    if (!settings) {
+        settings = await AppSettings.create({});
+    }
+    settings.maintenanceMode = false;
+    await settings.save();
+    delCache("admin-settings");
+    delCache("admin-dashboard");
+    res.json({
+        success: true,
+        data: {
+            maintenanceMode: false,
+            maintenanceMessage: settings.maintenanceMessage,
+            message: "Maintenance mode is OFF",
+        },
+    });
+});
+
 
 export const getHealth = AsyncHandler(async (req, res) => {
     const uptime = process.uptime();
