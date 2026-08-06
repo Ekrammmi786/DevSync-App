@@ -1,36 +1,38 @@
-
+import { Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider, ProtectedRoute, GuestRoute } from './context/AuthContext';
+import LandingPage from './pages/LandingPage'
+import HomePage from './pages/homePage'
+import LoginPage from './pages/LoginPage'
 import SignUpPage from './pages/SignUpPage'
 import OnboardingPage from './pages/OnboardingPage'
 import ChatPage from './pages/ChatPage'
-import callPage from './pages/callPage'
-import notificationPage from './pages/notificationPage'
-import { useQuery } from '@tanstack/react-query';
+import CallPage from './pages/callPage'
+import NotificationPage from './pages/notificationPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+import VerifyEmailPage from './pages/VerifyEmailPage'
 
 const App = () => {
-
-  const {data} = useQuery({queryKey:"todos",
-
-    queryFn:async()=>{
-      const res = await fetch("https://jsonplaceholder.typicode.com/todos");
-      const data = await res.json();
-      return data;
-    },
-  });
-
-  
   return (
-    <div className='h-screen' data-theme="night">
-      <Routes>
-        <Route path="/" element={<homePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignUpPage />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
-        <Route path="/chat" element={<ChatPage />} />
-        <Route path="/calls" element={<callPage />} />
-        <Route path="/notifications" element={<notificationPage />} />
-      </Routes>
+    <div className='h-screen' data-theme="olive">
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+          <Route path="/signup" element={<GuestRoute><SignUpPage /></GuestRoute>} />
+          <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
+          <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
+          <Route path="/verify-email" element={<ProtectedRoute><VerifyEmailPage /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+          <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+          <Route path="/calls" element={<ProtectedRoute><CallPage /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><NotificationPage /></ProtectedRoute>} />
+        </Routes>
+      </AuthProvider>
 
-      <Toaster/>
+      <Toaster position="top-center" />
     </div>
   )
 }

@@ -1,66 +1,54 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout';
 import FormField from '../components/ui/FormField';
-import { useSignup } from '../hooks/useAuth';
-import { signupSchema, getFieldError, passwordStrength, strengthLabel } from '../lib/validation';
+import { useResetPassword } from '../hooks/useAuth';
+import { resetPasswordSchema, getFieldError, passwordStrength, strengthLabel } from '../lib/validation';
 
-const SignUpPage = () => {
+const ResetPasswordPage = () => {
+  const location = useLocation();
+  const initialEmail = location.state?.email || '';
+
   const [form, setForm] = useState({
-    fullname: '',
-    email: '',
-    password: '',
+    email: initialEmail,
+    otp: '',
+    newPassword: '',
     confirmPassword: '',
-    terms: false,
   });
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [attempted, setAttempted] = useState(false);
-  const { mutate, isPending } = useSignup();
+  const { mutate, isPending } = useResetPassword();
 
-  const result = signupSchema.safeParse(form);
+  const result = resetPasswordSchema.safeParse(form);
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setAttempted(true);
     if (!result.success) return;
-    const { confirmPassword, terms, ...payload } = form;
-    void terms;
+    const { confirmPassword, ...payload } = form;
     void confirmPassword;
     mutate(payload);
   };
 
-  const strength = passwordStrength(form.password);
+  const strength = passwordStrength(form.newPassword);
 
   return (
     <AuthLayout
-      title="Create account"
-      subtitle="Join the DevSync developer community"
+      title="Reset password"
+      subtitle="Enter the code from your email and choose a new password"
       footer={
         <p className="text-sm text-center text-base-content/60">
-          Already have an account?{' '}
-          <Link to="/login" className="text-primary font-medium hover:underline">
-            Login
+          <Link to="/forgot-password" className="text-primary font-medium hover:underline">
+            Resend / request a new code
           </Link>
         </p>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        <FormField
-          label="Full Name"
-          name="fullname"
-          placeholder="John Doe"
-          value={form.fullname}
-          onChange={handleChange}
-          autoComplete="name"
-          icon={<i className="fa-solid fa-user" />}
-          error={attempted ? getFieldError(result, 'fullname') : undefined}
-        />
-
         <FormField
           label="Email"
           name="email"
@@ -73,13 +61,24 @@ const SignUpPage = () => {
           error={attempted ? getFieldError(result, 'email') : undefined}
         />
 
+        <FormField
+          label="Reset Code (OTP)"
+          name="otp"
+          placeholder="4-6 digit code"
+          value={form.otp}
+          onChange={handleChange}
+          autoComplete="one-time-code"
+          icon={<i className="fa-solid fa-key" />}
+          error={attempted ? getFieldError(result, 'otp') : undefined}
+        />
+
         <div>
           <FormField
-            label="Password"
-            name="password"
+            label="New Password"
+            name="newPassword"
             type={showPw ? 'text' : 'password'}
-placeholder="Min 6 chars, 1 upper, 1 lower, 1 number"
-            value={form.password}
+            placeholder="Min 6 chars, 1 upper, 1 lower, 1 number"
+            value={form.newPassword}
             onChange={handleChange}
             autoComplete="new-password"
             icon={<i className="fa-solid fa-lock" />}
@@ -93,9 +92,9 @@ placeholder="Min 6 chars, 1 upper, 1 lower, 1 number"
                 {showPw ? <i className="fa-solid fa-eye-slash" /> : <i className="fa-solid fa-eye" />}
               </button>
             }
-            error={attempted ? getFieldError(result, 'password') : undefined}
+            error={attempted ? getFieldError(result, 'newPassword') : undefined}
           />
-          {form.password && (
+          {form.newPassword && (
             <div className="mt-2">
               <progress
                 className={`progress progress-${['error', 'warning', 'info', 'success', 'success'][strength]} w-full`}
@@ -108,10 +107,10 @@ placeholder="Min 6 chars, 1 upper, 1 lower, 1 number"
         </div>
 
         <FormField
-          label="Confirm Password"
+          label="Confirm New Password"
           name="confirmPassword"
           type={showConfirmPw ? 'text' : 'password'}
-          placeholder="Repeat your password"
+          placeholder="Repeat new password"
           value={form.confirmPassword}
           onChange={handleChange}
           autoComplete="new-password"
@@ -129,33 +128,14 @@ placeholder="Min 6 chars, 1 upper, 1 lower, 1 number"
           error={attempted ? getFieldError(result, 'confirmPassword') : undefined}
         />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            name="terms"
-            checked={form.terms}
-            onChange={handleChange}
-            className="checkbox checkbox-primary checkbox-sm"
-            required
-          />
-          <span className="text-sm text-base-content/70">
-            I agree to the{' '}
-            <span className="text-primary font-medium">Terms of Service</span> and{' '}
-            <span className="text-primary font-medium">Privacy Policy</span>
-          </span>
-        </label>
-        {attempted && getFieldError(result, 'terms') && (
-          <p className="text-sm text-error -mt-2">{getFieldError(result, 'terms')}</p>
-        )}
-
         <button type="submit" className="btn btn-primary w-full" disabled={isPending}>
           {isPending ? (
             <>
               <span className="loading loading-spinner loading-sm" />
-              Creating...
+              Resetting...
             </>
           ) : (
-            'Sign Up'
+            'Reset Password'
           )}
         </button>
       </form>
@@ -163,4 +143,4 @@ placeholder="Min 6 chars, 1 upper, 1 lower, 1 number"
   );
 };
 
-export default SignUpPage;
+export default ResetPasswordPage;
