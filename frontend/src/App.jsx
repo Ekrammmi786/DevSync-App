@@ -12,6 +12,9 @@ import NotificationPage from './pages/notificationPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
+import SearchUsersPage from './pages/SearchUsersPage'
+import FriendsPage from './pages/FriendsPage'
+import AdminPage from './pages/AdminPage'
 
 const App = () => {
   return (
@@ -29,6 +32,9 @@ const App = () => {
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
           <Route path="/calls" element={<ProtectedRoute><CallPage /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><NotificationPage /></ProtectedRoute>} />
+          <Route path="/find" element={<ProtectedRoute><SearchUsersPage /></ProtectedRoute>} />
+          <Route path="/friends" element={<ProtectedRoute><FriendsPage /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
 

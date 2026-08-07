@@ -8,6 +8,9 @@ import {
   sendFriendRequestApi,
   acceptFriendRequestApi,
   rejectFriendRequestApi,
+  searchUsersApi,
+  getMyFriendsApi,
+  getOutgoingFriendRequestsApi,
 } from "../api/userApi";
 
 export const useRecommendedUsers = (limit = 9) => {
@@ -83,5 +86,27 @@ export const useRejectFriendRequest = () => {
     onError: (error) => {
       toast.error(error?.response?.data?.message || "Could not reject request");
     },
+  });
+};
+
+export const useSearchUsers = (query) => {
+  return useQuery({
+    queryKey: ["users", "search", query],
+    queryFn: () => searchUsersApi(query || { fullname: "", role: "" }),
+    enabled: !!(query && (query.fullname?.trim() || query.role?.trim())),
+  });
+};
+
+export const useMyFriends = (limit = 20) => {
+  return useQuery({
+    queryKey: ["users", "friends", limit],
+    queryFn: () => getMyFriendsApi({ limit }),
+  });
+};
+
+export const useOutgoingFriendRequests = () => {
+  return useQuery({
+    queryKey: ["users", "outgoing-friend-requests"],
+    queryFn: getOutgoingFriendRequestsApi,
   });
 };

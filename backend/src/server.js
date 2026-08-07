@@ -22,7 +22,7 @@ app.use(cookieParser());
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (curl, Postman, mobile) and all localhost dev ports
+     
       if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
         return callback(null, true);
       }

@@ -21,7 +21,6 @@ export const useAuth = () => {
   return ctx;
 };
 
-// Guards protected routes
 export const ProtectedRoute = ({ children }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
@@ -41,7 +40,6 @@ export const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Redirects authenticated users away from login/signup to the dashboard
 export const GuestRoute = ({ children }) => {
   const { user, isLoading } = useAuth();
 

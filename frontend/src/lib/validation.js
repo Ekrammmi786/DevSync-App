@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Mirrors backend zod rules in backend/src/validations/auth.validation.js
 export const signupSchema = z.object({
   fullname: z
     .string()

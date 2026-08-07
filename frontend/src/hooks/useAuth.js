@@ -70,7 +70,6 @@ export const useLogout = () => {
       navigate("/");
     },
     onError: () => {
-      // Even if the server call fails, clear local state and go to landing page
       queryClient.removeQueries({ queryKey: ["auth", "me"] });
       navigate("/");
     },

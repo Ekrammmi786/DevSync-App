@@ -21,7 +21,6 @@ const features = [
 const LandingPage = () => {
   return (
     <div className="min-h-screen bg-base-100">
-      {/* ===== Navbar ===== */}
       <div className="navbar bg-base-100 shadow-sm sticky top-0 z-30">
         <div className="navbar-start">
           <Link to="/" className="flex items-center gap-2 px-2">
@@ -41,7 +40,6 @@ const LandingPage = () => {
         </div>
       </div>
 
-      {/* ===== Hero ===== */}
       <section className="bg-gradient-to-br from-primary to-accent text-primary-content">
         <div className="max-w-6xl mx-auto px-4 py-20 sm:py-28 text-center">
           <span className="badge badge-outline border-primary-content/40 text-primary-content mb-6">
@@ -72,7 +70,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ===== Features ===== */}
       <section id="features" className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-base-content">
@@ -95,7 +92,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ===== How it works ===== */}
       <section id="how" className="bg-base-200">
         <div className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
           <div className="text-center mb-12">
@@ -123,7 +119,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ===== CTA ===== */}
       <section className="bg-primary text-primary-content">
         <div className="max-w-4xl mx-auto px-4 py-16 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
@@ -138,7 +133,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ===== Footer ===== */}
       <footer className="footer footer-center bg-base-100 text-base-content p-6">
         <div>
           <p className="font-bold text-primary">⚡ DevSync</p>

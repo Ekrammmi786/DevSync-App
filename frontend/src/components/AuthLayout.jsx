@@ -4,7 +4,6 @@ const AuthLayout = ({ title, subtitle, children, footer }) => {
   return (
     <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
       <div className="card w-full max-w-5xl bg-base-100 shadow-xl grid md:grid-cols-2 overflow-hidden">
-        {/* Branding panel */}
         <div className="hidden md:flex flex-col justify-between bg-primary text-primary-content p-10">
           <div>
             <div className="flex items-center gap-2 mb-8">
@@ -26,7 +25,6 @@ const AuthLayout = ({ title, subtitle, children, footer }) => {
           </div>
         </div>
 
-        {/* Form panel */}
         <div className="p-8 sm:p-10">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-base-content">{title}</h1>

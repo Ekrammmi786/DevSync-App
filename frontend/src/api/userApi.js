@@ -23,3 +23,9 @@ export const acceptFriendRequestApi = (id) =>
 
 export const rejectFriendRequestApi = (id) =>
   axiosInstance.put(`/user/friend-request/${id}/reject`).then((res) => res.data);
+
+export const searchUsersApi = (data) =>
+  axiosInstance.post("/user/search", data).then((res) => res.data);
+
+export const getOutgoingFriendRequestsApi = () =>
+  axiosInstance.get("/user/outgoingfriendrequest").then((res) => res.data);

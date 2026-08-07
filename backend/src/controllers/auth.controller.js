@@ -5,6 +5,7 @@ import { upsertStreamUser } from "../lib/stream.js";
 import { generateOTP, hashOTP } from "../services/otp.services.js";
 import { sendOtpEmail } from "../services/email.services.js";
 import { calculateDevScore } from "../services/devScore.service.js";
+import ApiError from "../utils/Apierror.js";
 
 export async function signup(req, res) {
   const { email, password, fullname, role = "", techStack = [] } = req.body;
@@ -310,6 +311,7 @@ export async function onboard(req, res) {
       linkedinUsername,
       portfolioUrl,
       experience,
+      profilePic
     } = req.body;
 
     if (
@@ -346,6 +348,7 @@ export async function onboard(req, res) {
         linkedinUsername: linkedinUsername || "",
         portfolioUrl: portfolioUrl || "",
         experience: experience || "",
+        profilePic: profilePic || updatedUser?.profilePic || "",
         isOnBoarded: true,
       },
       { new: true },

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout';
 import FormField from '../components/ui/FormField';
+import ErrorPopup from '../components/ui/ErrorPopup';
 import { useResetPassword } from '../hooks/useAuth';
 import { resetPasswordSchema, getFieldError, passwordStrength, strengthLabel } from '../lib/validation';
 
@@ -14,15 +15,17 @@ const ResetPasswordPage = () => {
     otp: '',
     newPassword: '',
     confirmPassword: '',
-  });
+});
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [attempted, setAttempted] = useState(false);
+  const [popup, setPopup] = useState(null);
   const { mutate, isPending } = useResetPassword();
 
   const result = resetPasswordSchema.safeParse(form);
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    if (e.target.name === 'otp') setPopup(null);
   };
 
   const handleSubmit = (e) => {
@@ -31,7 +34,13 @@ const ResetPasswordPage = () => {
     if (!result.success) return;
     const { confirmPassword, ...payload } = form;
     void confirmPassword;
-    mutate(payload);
+    mutate(payload, {
+      onError: (error) => {
+        const message = error?.response?.data?.message || 'Password reset failed';
+        const code = error?.response?.data?.code || '';
+        setPopup({ title: 'Reset failed', message, code });
+      },
+    });
   };
 
   const strength = passwordStrength(form.newPassword);
@@ -139,6 +148,13 @@ const ResetPasswordPage = () => {
           )}
         </button>
       </form>
+
+      <ErrorPopup
+        open={!!popup}
+        title={popup?.title || ''}
+        message={popup?.message || ''}
+        onClose={() => setPopup(null)}
+      />
     </AuthLayout>
   );
 };

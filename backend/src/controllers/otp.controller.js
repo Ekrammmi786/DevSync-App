@@ -32,6 +32,10 @@ export const verifyEmail = AsyncHandler(async (req, res) => {
   if (!verifyOTP(otp, user.otpHash)) {
     await User.findByIdAndUpdate(user._id, { $inc: { otpAttempts: 1 } });
     throw new ApiError(400, "Invalid OTP", "INVALID_OTP");
+    res.json({
+      message:"Invalid OTP",
+      success:false
+    })
   }
 
   await User.findByIdAndUpdate(user._id, {
