@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLogout } from '../hooks/useAuth';
@@ -10,6 +11,7 @@ import {
   useAcceptFriendRequest,
   useRejectFriendRequest,
 } from '../hooks/useUser';
+import UserProfileModal from '../components/UserProfileModal';
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -31,10 +33,18 @@ const HomePage = () => {
   const { mutate: acceptRequest } = useAcceptFriendRequest();
   const { mutate: rejectRequest } = useRejectFriendRequest();
 
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   const recommended = recommendedData?.data ?? [];
   const leaderboard = leaderboardData?.data ?? [];
   const requests = requestsData?.data ?? [];
   const devScore = devScoreData?.data;
+
+  const handleOpenProfile = (id) => {
+    setSelectedUserId(id);
+    setIsProfileOpen(true);
+  };
 
 const isNotOnboarded = user && !user.isOnBoarded;
 
@@ -155,7 +165,11 @@ const isNotOnboarded = user && !user.isOnBoarded;
               ) : leaderboard.length ? (
                 <ul className="space-y-2">
                   {leaderboard.map((u, idx) => (
-                    <li key={u._id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-base-200 transition">
+                    <li
+                      key={u._id}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-base-200 transition cursor-pointer"
+                      onClick={() => handleOpenProfile(u._id)}
+                    >
                       <span className="w-6 text-center font-bold text-base-content/60">{idx + 1}</span>
                       <div className="avatar">
                         <div className="w-9 rounded-full"><img src={u.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt={u.fullname} /></div>
@@ -182,11 +196,11 @@ const isNotOnboarded = user && !user.isOnBoarded;
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {requests.map((req) => (
                   <div key={req._id} className="flex items-center gap-3 p-3 border border-base-300 rounded-lg">
-                    <div className="avatar">
+                    <div className="avatar cursor-pointer" onClick={() => handleOpenProfile(req.sender?._id)}>
                       <div className="w-10 rounded-full"><img src={req.sender?.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt={req.sender?.fullname} /></div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{req.sender?.fullname}</p>
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleOpenProfile(req.sender?._id)}>
+                      <p className="font-medium text-sm truncate hover:text-primary transition-colors">{req.sender?.fullname}</p>
                       <p className="text-xs text-base-content/60 truncate">{req.sender?.role || 'Developer'}</p>
                     </div>
                     <div className="flex gap-2">
@@ -221,12 +235,17 @@ const isNotOnboarded = user && !user.isOnBoarded;
           ) : recommended.length ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {recommended.map((u) => (
-                <div key={u._id} className="card bg-base-100 shadow-xl">
+                <div key={u._id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
                   <div className="card-body items-center text-center">
-                    <div className="avatar">
-                      <div className="w-16 rounded-full"><img src={u.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt={u.fullname} /></div>
+                    <div className="avatar cursor-pointer" onClick={() => handleOpenProfile(u._id)}>
+                      <div className="w-16 rounded-full ring-2 ring-primary/20"><img src={u.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt={u.fullname} /></div>
                     </div>
-                    <h3 className="font-semibold text-base-content">{u.fullname}</h3>
+                    <h3
+                      className="font-semibold text-base-content cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => handleOpenProfile(u._id)}
+                    >
+                      {u.fullname}
+                    </h3>
                     <p className="text-sm text-base-content/60">{u.role || 'Developer'}</p>
                     {u.location && (<p className="text-xs text-base-content/50">📍 {u.location}</p>)}
                     <div className="flex flex-wrap justify-center gap-1 mt-1">
@@ -236,9 +255,14 @@ const isNotOnboarded = user && !user.isOnBoarded;
                       <span className="badge badge-primary">{u.devScore ?? 0} score</span>
                       {u.badges?.[0] && <span className="badge badge-outline">{u.badges[0]}</span>}
                     </div>
-                    <button className="btn btn-primary btn-sm w-full mt-3" disabled={sending || isNotOnboarded} onClick={() => sendRequest(u._id)}>
-                      {sending ? (<><span className="loading loading-spinner loading-xs"></span> Sending...</>) : ('Add Friend')}
-                    </button>
+                    <div className="flex gap-2 mt-3 w-full">
+                      <button className="btn btn-outline btn-sm flex-1" onClick={() => handleOpenProfile(u._id)}>
+                        👤 Profile
+                      </button>
+                      <button className="btn btn-primary btn-sm flex-1" disabled={sending || isNotOnboarded} onClick={() => sendRequest(u._id)}>
+                        {sending ? '...' : '+ Friend'}
+                      </button>
+                    </div>
                     {isNotOnboarded && (<p className="text-xs text-warning mt-1">Complete profile to connect</p>)}
                   </div>
                 </div>
@@ -254,6 +278,12 @@ const isNotOnboarded = user && !user.isOnBoarded;
           )}
         </div>
       </main>
+
+      <UserProfileModal
+        userId={selectedUserId}
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
     </div>
   );
 };

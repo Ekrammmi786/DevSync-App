@@ -1,20 +1,30 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLogout } from '../hooks/useAuth';
 import { useSearchUsers, useSendFriendRequest } from '../hooks/useUser';
+import UserProfileModal from '../components/UserProfileModal';
 
 const SearchUsersPage = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { mutate: logout } = useLogout();
   const [fullname, setFullname] = useState('');
   const [role, setRole] = useState('');
   const [searched, setSearched] = useState(false);
 
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   const { data, isLoading } = useSearchUsers(searched ? { fullname, role } : {});
   const { mutate: sendRequest, isPending: sending } = useSendFriendRequest();
 
   const results = data?.data ?? [];
+
+  const handleOpenProfile = (id) => {
+    setSelectedUserId(id);
+    setIsProfileOpen(true);
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -124,12 +134,17 @@ const SearchUsersPage = () => {
         {!isLoading && results.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {results.map((u) => (
-              <div key={u._id} className="card bg-base-100 shadow-xl">
+              <div key={u._id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
                 <div className="card-body items-center text-center">
-                  <div className="avatar">
-                    <div className="w-16 rounded-full"><img src={u.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt={u.fullname} /></div>
+                  <div className="avatar cursor-pointer" onClick={() => handleOpenProfile(u._id)}>
+                    <div className="w-16 rounded-full ring-2 ring-primary/20"><img src={u.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt={u.fullname} /></div>
                   </div>
-                  <h3 className="font-semibold text-base-content">{u.fullname}</h3>
+                  <h3
+                    className="font-semibold text-base-content cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => handleOpenProfile(u._id)}
+                  >
+                    {u.fullname}
+                  </h3>
                   <p className="text-sm text-base-content/60">{u.role || 'Developer'}</p>
                   {u.location && (<p className="text-xs text-base-content/50">📍 {u.location}</p>)}
                   <div className="flex flex-wrap justify-center gap-1 mt-1">
@@ -138,21 +153,35 @@ const SearchUsersPage = () => {
                   <div className="flex items-center gap-2 mt-2">
                     <span className="badge badge-primary">{u.devScore ?? 0} score</span>
                   </div>
-                  {u.friendStatus === 'friends' ? (
-                    <span className="badge badge-success mt-3">✓ Friends</span>
-                  ) : u.friendStatus === 'pending' ? (
-                    <span className="badge badge-warning mt-3">⏳ Request Pending</span>
-                  ) : (
-                    <button className="btn btn-primary btn-sm w-full mt-3" disabled={sending} onClick={() => sendRequest(u._id)}>
-                      {sending ? (<><span className="loading loading-spinner loading-xs"></span> Sending...</>) : ('Add Friend')}
+
+                  <div className="flex gap-2 mt-3 w-full">
+                    <button className="btn btn-outline btn-sm flex-1" onClick={() => handleOpenProfile(u._id)}>
+                      👤 Profile
                     </button>
-                  )}
+                    {u.friendStatus === 'friends' ? (
+                      <button className="btn btn-primary btn-sm flex-1" onClick={() => navigate(`/chat?userId=${u._id}`)}>
+                        💬 Message
+                      </button>
+                    ) : u.friendStatus === 'pending' ? (
+                      <span className="badge badge-warning self-center">⏳ Pending</span>
+                    ) : (
+                      <button className="btn btn-primary btn-sm flex-1" disabled={sending} onClick={() => sendRequest(u._id)}>
+                        {sending ? '...' : '+ Friend'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </main>
+
+      <UserProfileModal
+        userId={selectedUserId}
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
     </div>
   );
 };

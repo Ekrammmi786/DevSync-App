@@ -1,11 +1,17 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLogout } from '../hooks/useAuth';
 import { useMyFriends, useFriendRequests, useAcceptFriendRequest, useRejectFriendRequest } from '../hooks/useUser';
+import UserProfileModal from '../components/UserProfileModal';
 
 const FriendsPage = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { mutate: logout } = useLogout();
+
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const { data: friendsData, isLoading: floading } = useMyFriends(20);
   const { data: requestsData, isLoading: rloading } = useFriendRequests(10);
@@ -14,6 +20,11 @@ const FriendsPage = () => {
 
   const friends = friendsData?.data ?? [];
   const requests = requestsData?.data ?? [];
+
+  const handleOpenProfile = (id) => {
+    setSelectedUserId(id);
+    setIsProfileOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-base-200">
@@ -66,11 +77,11 @@ const FriendsPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {requests.map((req) => (
                   <div key={req._id} className="flex items-center gap-3 p-3 border border-base-300 rounded-lg">
-                    <div className="avatar">
+                    <div className="avatar cursor-pointer" onClick={() => handleOpenProfile(req.sender?._id)}>
                       <div className="w-10 rounded-full"><img src={req.sender?.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt={req.sender?.fullname} /></div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{req.sender?.fullname}</p>
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleOpenProfile(req.sender?._id)}>
+                      <p className="font-medium text-sm truncate hover:text-primary transition-colors">{req.sender?.fullname}</p>
                       <p className="text-xs text-base-content/60 truncate">{req.sender?.role || 'Developer'}</p>
                     </div>
                     <div className="flex gap-2">
@@ -98,12 +109,17 @@ const FriendsPage = () => {
         ) : friends.length ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {friends.map((f) => (
-              <div key={f._id} className="card bg-base-100 shadow-xl">
+              <div key={f._id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
                 <div className="card-body items-center text-center">
-                  <div className="avatar">
-                    <div className="w-16 rounded-full"><img src={f.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt={f.fullname} /></div>
+                  <div className="avatar cursor-pointer" onClick={() => handleOpenProfile(f._id)}>
+                    <div className="w-16 rounded-full ring-2 ring-primary/20"><img src={f.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt={f.fullname} /></div>
                   </div>
-                  <h3 className="font-semibold text-base-content">{f.fullname}</h3>
+                  <h3
+                    className="font-semibold text-base-content cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => handleOpenProfile(f._id)}
+                  >
+                    {f.fullname}
+                  </h3>
                   <p className="text-sm text-base-content/60">{f.role || 'Developer'}</p>
                   <div className="flex flex-wrap justify-center gap-1 mt-1">
                     {(f.techStack || f.codinglanguage || []).slice(0, 3).map((t) => (<span key={t} className="badge badge-ghost badge-sm">{t}</span>))}
@@ -113,8 +129,11 @@ const FriendsPage = () => {
                     {f.badges?.[0] && <span className="badge badge-outline">{f.badges[0]}</span>}
                   </div>
                   <div className="flex gap-2 mt-3 w-full">
-                    <button className="btn btn-primary btn-sm flex-1">
-                      <i className="fa-solid fa-comment-dots mr-1" /> Message
+                    <button className="btn btn-outline btn-sm flex-1" onClick={() => handleOpenProfile(f._id)}>
+                      👤 Profile
+                    </button>
+                    <button className="btn btn-primary btn-sm flex-1" onClick={() => navigate(`/chat?userId=${f._id}`)}>
+                      💬 Message
                     </button>
                   </div>
                 </div>
@@ -132,6 +151,12 @@ const FriendsPage = () => {
           </div>
         )}
       </main>
+
+      <UserProfileModal
+        userId={selectedUserId}
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
     </div>
   );
 };

@@ -11,6 +11,7 @@ import {
   searchUsersApi,
   getMyFriendsApi,
   getOutgoingFriendRequestsApi,
+  getUserProfileApi,
 } from "../api/userApi";
 
 export const useRecommendedUsers = (limit = 9) => {
@@ -108,5 +109,13 @@ export const useOutgoingFriendRequests = () => {
   return useQuery({
     queryKey: ["users", "outgoing-friend-requests"],
     queryFn: getOutgoingFriendRequestsApi,
+  });
+};
+
+export const useUserProfile = (userId) => {
+  return useQuery({
+    queryKey: ["users", "profile", userId],
+    queryFn: () => getUserProfileApi(userId),
+    enabled: !!userId,
   });
 };

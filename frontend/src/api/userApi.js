@@ -29,3 +29,6 @@ export const searchUsersApi = (data) =>
 
 export const getOutgoingFriendRequestsApi = () =>
   axiosInstance.get("/user/outgoingfriendrequest").then((res) => res.data);
+
+export const getUserProfileApi = (id) =>
+  axiosInstance.get(`/user/profile/${id}`).then((res) => res.data);

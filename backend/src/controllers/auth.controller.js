@@ -216,8 +216,17 @@ export async function logout(req, res) {
     console.error("Logout DB error:", err);
   }
 
-  res.clearCookie("jwt");
-  res.clearCookie("refreshToken", { path: "/api/auth/refresh" });
+  const cookieOptions = {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+  };
+
+  res.cookie("jwt", "", { ...cookieOptions, maxAge: 0 });
+  res.cookie("refreshToken", "", { ...cookieOptions, path: "/api/auth/refresh", maxAge: 0 });
+
+  res.clearCookie("jwt", cookieOptions);
+  res.clearCookie("refreshToken", { ...cookieOptions, path: "/api/auth/refresh" });
 
   return res.status(200).json({
     success: true,

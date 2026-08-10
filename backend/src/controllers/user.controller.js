@@ -574,3 +574,43 @@ export async function searchUsers(req, res) {
     });
   }
 }
+
+export const getUserProfileById = AsyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const targetUser = await User.findById(id).select(
+    "fullname email profilePic bio role codinglanguage learninglanguage location techStack interests lookingFor availability timezone githubUsername linkedinUsername portfolioUrl experience devScore badges completedProjects completedInterviews isOnBoarded friends createdAt"
+  );
+
+  if (!targetUser) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+      code: "USER_NOT_FOUND",
+    });
+  }
+
+  const currentUser = await User.findById(req.user._id).select("friends");
+  const isFriend = currentUser.friends.some(
+    (fId) => fId.toString() === targetUser._id.toString()
+  );
+
+  const pendingReq = await FriendRequest.findOne({
+    $or: [
+      { sender: req.user._id, recipient: targetUser._id, status: "pending" },
+      { sender: targetUser._id, recipient: req.user._id, status: "pending" },
+    ],
+  });
+
+  let friendStatus = "none";
+  if (isFriend) friendStatus = "friends";
+  else if (pendingReq) friendStatus = "pending";
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      ...targetUser.toObject(),
+      friendStatus,
+      isSelf: req.user._id.toString() === targetUser._id.toString(),
+    },
+  });
+});

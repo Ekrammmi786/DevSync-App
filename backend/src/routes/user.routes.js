@@ -11,6 +11,7 @@ import {
   rejectfriend,
   getLeaderboard,
   getMyDevScore,
+  getUserProfileById,
 } from "../controllers/user.controller.js";
 import { uploadProfilePicture } from "../controllers/profile.controller.js";
 const router = express.Router();
@@ -21,6 +22,7 @@ router.get("/", getRecommendedUser);
 router.get("/friends", getMyFriends);
 router.get("/leaderboard", getLeaderboard);
 router.get("/my-dev-score", getMyDevScore);
+router.get("/profile/:id", getUserProfileById);
 router.post("/upload-profile-picture", upload.single("profilePic"), uploadProfilePicture);
 router.post("/friend-request/:id", sendFriendRequest);
 router.put("/friend-request/:id/accept", acceptFriendRequest);

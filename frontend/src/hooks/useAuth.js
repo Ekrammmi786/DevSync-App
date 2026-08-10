@@ -66,12 +66,14 @@ export const useLogout = () => {
     mutationFn: logoutApi,
     onSuccess: () => {
       toast.success("Logged out");
-      queryClient.removeQueries({ queryKey: ["auth", "me"] });
-      navigate("/");
+      queryClient.setQueryData(["auth", "me"], null);
+      queryClient.clear();
+      navigate("/login", { replace: true });
     },
     onError: () => {
-      queryClient.removeQueries({ queryKey: ["auth", "me"] });
-      navigate("/");
+      queryClient.setQueryData(["auth", "me"], null);
+      queryClient.clear();
+      navigate("/login", { replace: true });
     },
   });
 };
