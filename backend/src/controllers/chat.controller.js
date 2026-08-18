@@ -1,5 +1,7 @@
 import User from "../models/User.js";
 import { generateStreamToken, streamClient } from "../lib/stream.js";
+import { StreamVideoClient } from "@stream-io/node-sdk";
+import "dotenv/config";
 
 export async function getStreamToken(req, res) {
     try {
@@ -11,6 +13,34 @@ export async function getStreamToken(req, res) {
             success: false,
             message: "Internal server error",
             code: "SERVER_ERROR"
+        });
+    }
+}
+
+export async function getVideoToken(req, res) {
+    try {
+        const apiKey = process.env.STREAM_VIDEO_API_KEY || process.env.STREAM_API_KEY;
+        const apiSecret = process.env.STREAM_VIDEO_API_SECRET || process.env.STREAM_API_SECRET;
+
+        if (!apiKey || !apiSecret) {
+            return res.status(500).json({
+                success: false,
+                message: "Video API credentials not configured",
+                code: "CONFIG_ERROR",
+            });
+        }
+
+        const videoClient = new StreamVideoClient({ apiKey, secret: apiSecret });
+        const token = videoClient.generateUserToken(req.user._id.toString());
+        await videoClient.disconnect();
+
+        res.status(200).json({ success: true, data: { token } });
+    } catch (error) {
+        console.log("error in getVideoToken controller:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            code: "SERVER_ERROR",
         });
     }
 }
@@ -41,19 +71,35 @@ export async function getOrCreateChannel(req, res) {
             (id) => id.toString() === userId,
         );
 
+        if (!isFriend) {
+            return res.status(403).json({
+                success: false,
+                message: "You can only chat with friends",
+                code: "NOT_FRIENDS",
+            });
+        }
+
         const channelId = [meId, userId].sort().join("-");
         const channel = streamClient.channel("messaging", channelId, {
             members: [meId, userId],
             created_by_id: meId,
         });
 
-        await channel.create();
+        try {
+            await channel.create();
+        } catch (createError) {
+            if (createError.message?.includes("already exists") || createError.statusCode === 400) {
+                console.log(`Channel ${channelId} already exists, watching instead`);
+            } else {
+                throw createError;
+            }
+        }
 
         return res.status(200).json({
             success: true,
             data: {
                 channelId,
-                isFriend,
+                isFriend: true,
             },
         });
     } catch (error) {

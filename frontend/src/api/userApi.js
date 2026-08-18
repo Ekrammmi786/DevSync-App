@@ -32,3 +32,6 @@ export const getOutgoingFriendRequestsApi = () =>
 
 export const getUserProfileApi = (id) =>
   axiosInstance.get(`/user/profile/${id}`).then((res) => res.data);
+
+export const removeFriendApi = (id) =>
+  axiosInstance.delete(`/user/removeFriend/${id}`).then((res) => res.data);

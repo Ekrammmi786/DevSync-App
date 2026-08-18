@@ -14,8 +14,8 @@ export const sendOtpEmail = async (email, otp) => {
         from: process.env.EMAIL_FROM,
         to: email,
         subject: "DevSync - Email Verification",
-        html: `
-<div styl<div style="
+    html: `
+<div style="
     max-width:500px;
     margin:auto;
     background:#f8f9f5;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import {
   Chat,
   Channel,
@@ -14,8 +14,9 @@ import {
 import "stream-chat-react/dist/css/index.css";
 import { useAuth } from "../context/AuthContext";
 import { useStreamToken, useOrCreateChannel } from "../hooks/useChat";
-import { useMyFriends } from "../hooks/useUser";
+import { useMyFriends, useRemoveFriend } from "../hooks/useUser";
 import UserProfileModal from "../components/UserProfileModal";
+import toast from "react-hot-toast";
 
 const apiKey = import.meta.env.VITE_STREAM_API_KEY;
 
@@ -26,6 +27,7 @@ const sort = { last_message_at: -1 };
 const ChatPage = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const targetUserId = searchParams.get("userId");
 
   const { data: tokenData, isLoading: tokenLoading } = useStreamToken();
@@ -36,11 +38,39 @@ const ChatPage = () => {
   const friends = friendsData?.data ?? [];
 
   const { mutateAsync: createChannelBackend } = useOrCreateChannel();
+  const { mutate: removeFriend } = useRemoveFriend();
 
   const [activeTab, setActiveTab] = useState("chats");
   const [activeChannel, setActiveChannel] = useState(null);
   const [profileUserId, setProfileUserId] = useState(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [friendsVersion, setFriendsVersion] = useState(0);
+  const [channelListKey, setChannelListKey] = useState(0);
+
+  const handleRemoveFriend = async (friendId) => {
+    try {
+      await removeFriend(friendId);
+      setActiveChannel(null);
+      setSearchParams({});
+      setRefreshKey((k) => k + 1);
+      setFriendsVersion((v) => v + 1);
+      setChannelListKey((k) => k + 1);
+      toast.success("Friend removed");
+    } catch (err) {
+      console.error("Failed to remove friend:", err);
+      toast.error("Could not remove friend");
+    }
+  };
+
+  const refreshChannelList = async () => {
+    if (!client) return;
+    try {
+      await client.channels.query();
+    } catch (err) {
+      console.error("Failed to refresh channels:", err);
+    }
+  };
 
   const client = useCreateChatClient({
     apiKey,
@@ -53,10 +83,41 @@ const ChatPage = () => {
   });
 
   useEffect(() => {
+    if (!client || !friends.length) return;
+
+    const users = {};
+    friends.forEach((f) => {
+      users[f._id] = {
+        id: f._id,
+        name: f.fullname || "User",
+        image: f.profilePic || undefined,
+      };
+    });
+
+    client.upsertUsers(users);
+  }, [client, friends]);
+
+  useEffect(() => {
+    if (!client) return;
+    refreshChannelList();
+  }, [client, channelListKey]);
+
+  useEffect(() => {
     if (!client || !targetUserId || !userId) return;
 
     const initChannelWithUser = async () => {
       try {
+        const targetFriend = friends.find((f) => f._id === targetUserId);
+        if (targetFriend) {
+          client.upsertUsers({
+            [targetUserId]: {
+              id: targetUserId,
+              name: targetFriend.fullname || "User",
+              image: targetFriend.profilePic || undefined,
+            },
+          });
+        }
+
         await createChannelBackend(targetUserId);
 
         const channelId = [userId, targetUserId].sort().join("-");
@@ -68,15 +129,27 @@ const ChatPage = () => {
         setActiveTab("chats");
       } catch (err) {
         console.error("Error creating or joining channel:", err);
+        toast.error(err?.response?.data?.message || "Could not open chat");
       }
     };
 
     initChannelWithUser();
-  }, [client, targetUserId, userId]);
+  }, [client, targetUserId, userId, friends]);
 
   const handleStartChatWithFriend = async (friendId) => {
     if (!client || !userId) return;
     try {
+      const targetFriend = friends.find((f) => f._id === friendId);
+      if (targetFriend) {
+        client.upsertUsers({
+          [friendId]: {
+            id: friendId,
+            name: targetFriend.fullname || "User",
+            image: targetFriend.profilePic || undefined,
+          },
+        });
+      }
+
       await createChannelBackend(friendId);
       const channelId = [userId, friendId].sort().join("-");
       const channel = client.channel("messaging", channelId, {
@@ -88,6 +161,7 @@ const ChatPage = () => {
       setSearchParams({ userId: friendId });
     } catch (err) {
       console.error("Failed to start chat with friend:", err);
+      toast.error(err?.response?.data?.message || "Could not start chat");
     }
   };
 
@@ -131,12 +205,20 @@ const ChatPage = () => {
         </div>
         <div className="navbar-end gap-2">
           {otherMemberId && (
-            <button
-              onClick={() => handleOpenProfile(otherMemberId)}
-              className="btn btn-sm btn-outline btn-primary gap-1"
-            >
-              <span>👤</span> View Profile
-            </button>
+            <>
+              <button
+                onClick={() => handleOpenProfile(otherMemberId)}
+                className="btn btn-sm btn-outline btn-primary gap-1"
+              >
+                <span>👤</span> View Profile
+              </button>
+              <button
+                onClick={() => navigate(`/calls?userId=${otherMemberId}`)}
+                className="btn btn-sm btn-success gap-1"
+              >
+                <span>📹</span> Call
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -169,10 +251,11 @@ const ChatPage = () => {
             </div>
 
             {/* Tab Contents */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto" key={friendsVersion}>
               {activeTab === "chats" ? (
-                <div className="h-full flex flex-col">
+                <div className="h-full flex flex-col" key={refreshKey}>
                   <ChannelList
+                    key={channelListKey}
                     sort={sort}
                     filters={{ ...filters, members: { $in: [userId] } }}
                     options={options}
@@ -189,7 +272,7 @@ const ChatPage = () => {
                         <div>
                           <h4 className="font-bold text-base text-base-content">No active chats</h4>
                           <p className="text-xs text-base-content/60 mt-1">
-                            Select a friend from the Friends tab to start chatting!
+                            Select a conversation from the sidebar or click on any friend to start collaborating!
                           </p>
                         </div>
                         <button
@@ -266,8 +349,29 @@ const ChatPage = () => {
                               handleStartChatWithFriend(f._id);
                             }}
                             className="btn btn-xs btn-primary gap-1"
+                            title="Message"
                           >
                             💬
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/calls?userId=${f._id}`);
+                            }}
+                            className="btn btn-xs btn-success"
+                            title="Video Call"
+                          >
+                            📹
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveFriend(f._id);
+                            }}
+                            className="btn btn-xs btn-error text-white"
+                            title="Remove Friend"
+                          >
+                            ❌
                           </button>
                         </div>
                       </div>
@@ -319,7 +423,7 @@ const ChatPage = () => {
         </Chat>
       </div>
 
-      {/* Profile Modal */}
+     
       <UserProfileModal
         userId={profileUserId}
         isOpen={isProfileOpen}

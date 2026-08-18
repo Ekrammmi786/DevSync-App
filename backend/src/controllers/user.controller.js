@@ -8,10 +8,11 @@ import {
   delCacheByPattern,
 } from "../lib/cache.js";
 import { calculateDevScore } from "../services/devScore.service.js";
+import { upsertStreamUser, deleteStreamChannel } from "../lib/stream.js";
 
 export const getLeaderboard = AsyncHandler(async (req, res) => {
-  const limit = parseInt(req.query.limit) || 20;
-  const skip = parseInt(req.query.skip) || 0;
+  const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+  const skip = Math.max(parseInt(req.query.skip) || 0, 0);
   const cacheKey = `leaderboard-${limit}-${skip}`;
   const cached = getCache(cacheKey);
   if (cached) {
@@ -86,8 +87,8 @@ export const getMyDevScore = AsyncHandler(async (req, res) => {
 });
 
 export const getRecommendedUser = AsyncHandler(async (req, res) => {
-  const limit = parseInt(req.query.limit) || 20;
-  const skip = parseInt(req.query.skip) || 0;
+  const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+  const skip = Math.max(parseInt(req.query.skip) || 0, 0);
   const cacheKey = `recommend-${req.user._id}-${limit}-${skip}`;
   const cached = getCache(cacheKey);
   if (cached) {
@@ -164,8 +165,8 @@ export const getRecommendedUser = AsyncHandler(async (req, res) => {
 
 export async function getMyFriends(req, res) {
   try {
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = parseInt(req.query.skip) || 0;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const skip = Math.max(parseInt(req.query.skip) || 0, 0);
     const cacheKey = `friends-${req.user._id}-${limit}-${skip}`;
     const cached = getCache(cacheKey);
     if (cached) {
@@ -216,8 +217,8 @@ export async function getMyFriends(req, res) {
 
 export async function getFriendRequests(req, res) {
   try {
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = parseInt(req.query.skip) || 0;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const skip = Math.max(parseInt(req.query.skip) || 0, 0);
     const cacheKey = `incoming-requests-${req.user._id}-${limit}-${skip}`;
     const cached = getCache(cacheKey);
     if (cached) {
@@ -415,6 +416,28 @@ export async function acceptFriendRequest(req, res) {
 
     const senderId = friendRequestDoc.sender.toString();
     const recipientId = friendRequestDoc.recipient.toString();
+
+    const [sender, recipient] = await Promise.all([
+      User.findById(senderId).select("fullname profilePic"),
+      User.findById(recipientId).select("fullname profilePic"),
+    ]);
+
+    if (sender) {
+      await upsertStreamUser({
+        id: sender._id.toString(),
+        name: sender.fullname,
+        image: sender.profilePic || "",
+      });
+    }
+
+    if (recipient) {
+      await upsertStreamUser({
+        id: recipient._id.toString(),
+        name: recipient.fullname,
+        image: recipient.profilePic || "",
+      });
+    }
+
     delCacheByPattern(`friends-${senderId}`);
     delCacheByPattern(`friends-${recipientId}`);
     delCacheByPattern(`incoming-requests-${recipientId}`);
@@ -488,8 +511,8 @@ export async function searchUsers(req, res) {
   try {
     const { fullname = "", role = "" } = req.body;
 
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = parseInt(req.query.skip) || 0;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const skip = Math.max(parseInt(req.query.skip) || 0, 0);
     const cacheKey = `search-${req.user._id}-${fullname}-${role}-${limit}-${skip}`;
     const cached = getCache(cacheKey);
     if (cached) {
@@ -504,11 +527,11 @@ export async function searchUsers(req, res) {
     const searchQuery = {};
 
     if (fullname.trim()) {
-      searchQuery.fullname = { $regex: fullname, $options: "i" };
+      searchQuery.fullname = { $regex: fullname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: "i" };
     }
 
     if (role.trim()) {
-      searchQuery.role = { $regex: role, $options: "i" };
+      searchQuery.role = { $regex: role.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: "i" };
     }
 
     searchQuery.isOnBoarded = true;
@@ -614,3 +637,78 @@ export const getUserProfileById = AsyncHandler(async (req, res) => {
     },
   });
 });
+
+export async function removeFriend(req, res) {
+  try {
+    const myId = req.user._id;
+    const { id: friendId } = req.params;
+
+    if (myId.toString() === friendId) {
+      return res.status(400).json({
+        success: false,
+        message: "You can't remove yourself as a friend",
+        code: "SELF_REMOVE",
+      });
+    }
+
+    const friend = await User.findById(friendId);
+    if (!friend) {
+      return res.status(404).json({
+        success: false,
+        message: "Friend not found",
+        code: "FRIEND_NOT_FOUND",
+      });
+    }
+
+    if (!friend.friends.includes(myId)) {
+      return res.status(400).json({
+        success: false,
+        message: "This user is not your friend",
+        code: "NOT_FRIENDS",
+      });
+    }
+
+    await User.findByIdAndUpdate(myId, {
+      $pull: { friends: friendId },
+    });
+
+    await User.findByIdAndUpdate(friendId, {
+      $pull: { friends: myId },
+    });
+
+    await FriendRequest.updateMany(
+      {
+        $or: [
+          { sender: myId, recipient: friendId },
+          { sender: friendId, recipient: myId },
+        ],
+      },
+      { $set: { status: "rejected" } },
+    );
+
+    await deleteStreamChannel(myId, friendId);
+
+    delCacheByPattern(`friends-${myId.toString()}`);
+    delCacheByPattern(`friends-${friendId}`);
+    delCacheByPattern(`recommend-${myId.toString()}`);
+    delCacheByPattern(`recommend-${friendId}`);
+    delCacheByPattern(`search-${myId.toString()}`);
+    delCacheByPattern(`search-${friendId}`);
+    delCacheByPattern(`incoming-requests-${myId.toString()}`);
+    delCacheByPattern(`outgoing-requests-${myId.toString()}`);
+    delCache("admin-dashboard");
+    delCacheByPattern("admin-friend-requests-");
+
+    return res.status(200).json({
+      success: true,
+      data: { message: "Friend removed successfully" },
+    });
+  } catch (error) {
+    console.error("error in removeFriend controller", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      code: "SERVER_ERROR",
+    });
+  }
+}

@@ -12,6 +12,7 @@ import {
   getLeaderboard,
   getMyDevScore,
   getUserProfileById,
+  removeFriend,
 } from "../controllers/user.controller.js";
 import { uploadProfilePicture } from "../controllers/profile.controller.js";
 const router = express.Router();
@@ -30,6 +31,7 @@ router.put("/friend-request/:id/reject",rejectfriend)
 router.get("/friend-requests", getFriendRequests);
 router.get("/outgoingfriendrequest", getOutgoingFriendReqs);
 router.post("/search", searchUsers);
+router.delete("/removeFriend/:id", removeFriend);
 
 
 export default router;

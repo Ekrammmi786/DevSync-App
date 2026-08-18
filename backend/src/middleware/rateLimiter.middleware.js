@@ -42,3 +42,16 @@ export const signupRateLimiter = rateLimit({
   legacyHeaders: false,
   skip: () => !isProduction,
 });
+
+export const refreshRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProduction ? 30 : 200,
+  message: {
+    success: false,
+    message: "Too many refresh attempts. Try again later.",
+    code: "REFRESH_RATE_LIMIT",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => !isProduction,
+});

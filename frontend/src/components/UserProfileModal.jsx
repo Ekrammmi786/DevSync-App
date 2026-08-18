@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { useUserProfile, useSendFriendRequest } from '../hooks/useUser';
+import { useUserProfile, useSendFriendRequest, useRemoveFriend } from '../hooks/useUser';
 
 const UserProfileModal = ({ userId, isOpen, onClose }) => {
   const navigate = useNavigate();
   const { data: profileData, isLoading } = useUserProfile(isOpen ? userId : null);
   const { mutate: sendRequest, isPending: sending } = useSendFriendRequest();
+  const { mutate: removeFriend, isPending: removing } = useRemoveFriend();
 
   if (!isOpen || !userId) return null;
 
@@ -172,9 +173,24 @@ const UserProfileModal = ({ userId, isOpen, onClose }) => {
             {!user.isSelf && (
               <>
                 {user.friendStatus === 'friends' ? (
-                  <button className="btn btn-primary flex-1" onClick={handleMessage}>
-                    💬 Direct Message
-                  </button>
+                  <div className="flex gap-2 w-full">
+                    <button className="btn btn-primary flex-1" onClick={handleMessage}>
+                      💬 Direct Message
+                    </button>
+                    <button
+                      className="btn btn-success flex-1"
+                      onClick={() => navigate(`/calls?userId=${user._id}`)}
+                    >
+                      📹 Video Call
+                    </button>
+                    <button
+                      className="btn btn-error text-white flex-1"
+                      disabled={removing}
+                      onClick={() => removeFriend(user._id)}
+                    >
+                      {removing ? 'Removing...' : '❌ Remove Friend'}
+                    </button>
+                  </div>
                 ) : user.friendStatus === 'pending' ? (
                   <button className="btn btn-secondary flex-1" onClick={handleMessage}>
                     💬 Direct Message
@@ -200,8 +216,15 @@ const UserProfileModal = ({ userId, isOpen, onClose }) => {
             </button>
           </div>
         )}
+             
+            
+            <button className="btn btn-ghost" onClick={onClose}>
+              Close
+            </button>
+          </div>
+      
       </div>
-    </div>
+    
   );
 };
 

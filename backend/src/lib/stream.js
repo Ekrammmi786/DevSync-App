@@ -19,6 +19,39 @@ export const upsertStreamUser = async (userData) => {
   }
 };
 
+export const deleteStreamChannel = async (userId1, userId2) => {
+  try {
+    const channelId = [userId1, userId2].sort().join("-");
+    const channel = streamClient.channel("messaging", channelId, {
+      members: [userId1, userId2],
+    });
+
+    try {
+      await channel.delete();
+      console.log(`Stream channel deleted: ${channelId}`);
+    } catch (deleteError) {
+      if (deleteError.message?.includes("not found") || deleteError.statusCode === 404) {
+        console.log(`Stream channel ${channelId} already deleted or not found`);
+      } else {
+        throw deleteError;
+      }
+    }
+
+    try {
+      await streamClient.channels.query({
+        filter_conditions: {
+          type: "messaging",
+          members: { $in: [userId1, userId2] },
+        },
+      });
+    } catch (queryError) {
+      console.error("Error refreshing channel list after delete:", queryError);
+    }
+  } catch (error) {
+    console.error("error deleting stream channel:", error);
+  }
+};
+
 export const generateStreamToken = (userId) => {
   try {
     const userIdStr = userId.toString();

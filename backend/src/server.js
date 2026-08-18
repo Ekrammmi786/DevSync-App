@@ -11,26 +11,44 @@ import compression from "compression";
 import helmet from "helmet";
 import mongoose from "mongoose";
 import { maintenanceCheck } from "./middleware/admin.middleware.js";
+import { sanitizeInput } from "./middleware/sanitize.middleware.js";
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      connectSrc: ["'self'", "https:", "http:"],
+      fontSrc: ["'self'", "data:"],
+      frameSrc: ["'self'", "https://*.stream-io-api.com"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 app.use(compression());
-app.use(express.json());
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(cookieParser());
 app.use(
   cors({
-    origin: (origin, callback) => {
-     
-      if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
-        return callback(null, true);
-      }
-      return callback(null, false);
-    },
+    origin: FRONTEND_URL,
     credentials: true,
   })
 );
+
+app.use(sanitizeInput);
+
+app.use((req, res, next) => {
+  req.setTimeout(30000);
+  res.setTimeout(30000);
+  next();
+});
 
 app.use(maintenanceCheck);
 app.use("/api/auth", authRoutes);

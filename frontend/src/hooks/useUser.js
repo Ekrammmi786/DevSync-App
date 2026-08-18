@@ -12,6 +12,7 @@ import {
   getMyFriendsApi,
   getOutgoingFriendRequestsApi,
   getUserProfileApi,
+  removeFriendApi,
 } from "../api/userApi";
 
 export const useRecommendedUsers = (limit = 9) => {
@@ -117,5 +118,24 @@ export const useUserProfile = (userId) => {
     queryKey: ["users", "profile", userId],
     queryFn: () => getUserProfileApi(userId),
     enabled: !!userId,
+  });
+};
+
+export const useRemoveFriend = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: removeFriendApi,
+    onSuccess: () => {
+      toast.success("Friend removed");
+      queryClient.invalidateQueries({ queryKey: ["users", "friends"] });
+      queryClient.invalidateQueries({ queryKey: ["users", "profile"] });
+      queryClient.invalidateQueries({ queryKey: ["users", "recommended"] });
+      queryClient.invalidateQueries({ queryKey: ["users", "search"] });
+      queryClient.invalidateQueries({ queryKey: ["users", "friend-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["users", "outgoing-friend-requests"] });
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Could not remove friend");
+    },
   });
 };

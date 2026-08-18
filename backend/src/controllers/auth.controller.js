@@ -19,14 +19,6 @@ export async function signup(req, res) {
       });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 6 characters",
-        code: "WEAK_PASSWORD",
-      });
-    }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email)) {
@@ -59,26 +51,33 @@ export async function signup(req, res) {
       techStack,
     });
 
-    try {
+    const otpPromise = (async () => {
       const otp = generateOTP();
       await User.findByIdAndUpdate(newUser._id, {
         otpHash: hashOTP(otp),
         otpExpiry: new Date(Date.now() + 10 * 60 * 1000),
       });
       await sendOtpEmail(newUser.email, otp);
-    } catch (err) {
-      console.error("OTP sending failed:", err);
-    }
+    })();
 
-    try {
+    const streamPromise = (async () => {
       await upsertStreamUser({
         id: newUser._id.toString(),
         name: newUser.fullname,
         image: newUser.profilePic || "",
       });
-    } catch (error) {
-      console.error("Stream user creation failed:", error);
-    }
+    })();
+
+    const results = await Promise.allSettled([
+      Promise.race([otpPromise, new Promise((_, reject) => setTimeout(() => reject(new Error("SMTP timeout")), 5000))]),
+      Promise.race([streamPromise, new Promise((_, reject) => setTimeout(() => reject(new Error("Stream timeout")), 3000))]),
+    ]);
+
+    results.forEach((result) => {
+      if (result.status === "rejected") {
+        console.error("Background task failed:", result.reason.message);
+      }
+    });
 
     const accessToken = jwt.sign(
       { userId: newUser._id },
@@ -88,7 +87,7 @@ export async function signup(req, res) {
 
     const refreshToken = jwt.sign(
       { userId: newUser._id },
-      process.env.JWT_REFRESH_SECRET_KEY || process.env.JWT_SECRET_KEY,
+      process.env.JWT_REFRESH_SECRET_KEY,
       { expiresIn: "7d" },
     );
 
@@ -172,7 +171,7 @@ export async function login(req, res) {
 
     const refreshToken = jwt.sign(
       { userId: user._id },
-      process.env.JWT_REFRESH_SECRET_KEY || process.env.JWT_SECRET_KEY,
+      process.env.JWT_REFRESH_SECRET_KEY,
       { expiresIn: "7d" },
     );
 
@@ -250,7 +249,7 @@ export async function refreshToken(req, res) {
     try {
       decoded = jwt.verify(
         incomingRefreshToken,
-        process.env.JWT_REFRESH_SECRET_KEY || process.env.JWT_SECRET_KEY,
+        process.env.JWT_REFRESH_SECRET_KEY,
       );
     } catch (err) {
       return res.status(401).json({
@@ -274,11 +273,27 @@ export async function refreshToken(req, res) {
       });
     }
 
+    const newRefreshToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_REFRESH_SECRET_KEY,
+      { expiresIn: "7d" },
+    );
+
+    await User.findByIdAndUpdate(user._id, { refreshToken: newRefreshToken });
+
     const newAccessToken = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET_KEY,
       { expiresIn: "15m" },
     );
+
+    res.cookie("refreshToken", newRefreshToken, {
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      sameSite: "strict",
+      path: "/api/auth/refresh",
+      secure: process.env.NODE_ENV === "production",
+    });
 
     res.cookie("jwt", newAccessToken, {
       maxAge: 15 * 60 * 1000,

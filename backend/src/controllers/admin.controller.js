@@ -84,8 +84,8 @@ export const getDashboard = AsyncHandler(async (req, res) => {
 });
 
 export const getUsers = AsyncHandler(async (req, res) => {
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = parseInt(req.query.skip) || 0;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const skip = Math.max(parseInt(req.query.skip) || 0, 0);
     const { search = "", isAdmin, isVerified, isOnBoarded } = req.query;
     const cacheKey = `admin-users-${search}-${isAdmin || "all"}-${isVerified || "all"}-${isOnBoarded || "all"}-${limit}-${skip}`;
     const cached = getCache(cacheKey);
@@ -100,8 +100,8 @@ export const getUsers = AsyncHandler(async (req, res) => {
     const filter = {};
     if (search) {
         filter.$or = [
-            { fullname: { $regex: search, $options: "i" } },
-            { email: { $regex: search, $options: "i" } },
+            { fullname: { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: "i" } },
+            { email: { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: "i" } },
         ];
     }
     if (isAdmin !== undefined) filter.isAdmin = isAdmin === "true";

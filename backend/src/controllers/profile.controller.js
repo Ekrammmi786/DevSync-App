@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js";
+import { upsertStreamUser } from "../lib/stream.js";
 
 export async function uploadProfilePicture(req, res) {
     try{
@@ -8,16 +9,25 @@ export async function uploadProfilePicture(req, res) {
                 code:"NO_FILE"});
             
         }
-   const result = await cloudinary.uploader.upload(
+    const result = await cloudinary.uploader.upload(
       `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
       {
         folder: "devsync/profile-pics",
         transformation: [{ width: 400, height: 400, crop: "fill" }],
       }
     );
-    await User.findByIdAndUpdate(req.user._id,{
+    const updatedUser = await User.findByIdAndUpdate(req.user._id,{
         profilePic:result.secure_url
-    })
+    }, { new: true }).select("fullname profilePic");
+
+    if (updatedUser) {
+      await upsertStreamUser({
+        id: updatedUser._id.toString(),
+        name: updatedUser.fullname,
+        image: updatedUser.profilePic || "",
+      });
+    }
+
     res.json({success:true,data:{message:"Profile picture uploaded successfully",url:result.secure_url}})   
     
 }catch(error){

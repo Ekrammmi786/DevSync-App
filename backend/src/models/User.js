@@ -6,24 +6,29 @@ const userSchema = new mongoose.Schema(
     fullname: {
       type: String,
       required: true,
+      maxlength: 50,
     },
     email: {
       type: String,
       required: true,
       unique: true,
+      maxlength: 100,
     },
     password: {
       type: String,
       required: true,
       minlength: 6,
+      maxlength: 256,
     },
     bio: {
       type: String,
       default: "",
+      maxlength: 500,
     },
     profilePic: {
       type: String,
       default: "",
+      maxlength: 2048,
     },
 
     codinglanguage: { type: [String], default: [] },
@@ -33,10 +38,12 @@ const userSchema = new mongoose.Schema(
     location: {
       type: String,
       default: "",
+      maxlength: 100,
     },
     role: {
       type: String,
       default: "",
+      maxlength: 50,
     },
     isOnBoarded: {
       type: Boolean,
@@ -83,22 +90,27 @@ const userSchema = new mongoose.Schema(
     timezone: {
       type: String,
       default: "",
+      maxlength: 50,
     },
     githubUsername: {
       type: String,
       default: "",
+      maxlength: 100,
     },
     linkedinUsername: {
       type: String,
       default: "",
+      maxlength: 100,
     },
     portfolioUrl: {
       type: String,
       default: "",
+      maxlength: 2048,
     },
     experience: {
       type: String,
       default: "",
+      maxlength: 1000,
     },
     devScore: {
       type: Number,
@@ -141,7 +153,7 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   try {
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (error) {
