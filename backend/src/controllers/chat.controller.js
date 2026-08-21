@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import { generateStreamToken, streamClient } from "../lib/stream.js";
 import { StreamVideoClient } from "@stream-io/node-sdk";
+import cloudinary from "../lib/cloudinary.js";
 import "dotenv/config";
 
 export async function getStreamToken(req, res) {
@@ -83,6 +84,10 @@ export async function getOrCreateChannel(req, res) {
         const channel = streamClient.channel("messaging", channelId, {
             members: [meId, userId],
             created_by_id: meId,
+            data: {
+                name: otherUser.fullname,
+                image: otherUser.profilePic || "",
+            },
         });
 
         try {
@@ -108,6 +113,54 @@ export async function getOrCreateChannel(req, res) {
             success: false,
             message: "Internal server error",
             code: "SERVER_ERROR",
+        });
+    }
+}
+
+export async function uploadChatFile(req, res) {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "No file uploaded",
+                code: "NO_FILE",
+            });
+        }
+
+        const folder = `devsync/chat/${req.user._id}`;
+        const sanitizedOriginalName = req.file.originalname.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9._-]/g, "");
+
+        const result = await new Promise((resolve, reject) => {
+            cloudinary.uploader.upload_stream(
+                {
+                    folder,
+                    resource_type: "auto",
+                    public_id: `${Date.now()}-${sanitizedOriginalName}`,
+                },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                }
+            ).end(req.file.buffer);
+        });
+
+        res.status(200).json({
+            success: true,
+            data: {
+                url: result.secure_url,
+                publicId: result.public_id,
+                type: result.resource_type,
+                fileName: req.file.originalname,
+                fileSize: result.bytes,
+                mimeType: req.file.mimetype,
+            },
+        });
+    } catch (error) {
+        console.error("Error in uploadChatFile:", error);
+        res.status(500).json({
+            success: false,
+            message: "File upload failed",
+            code: "UPLOAD_ERROR",
         });
     }
 }

@@ -42,8 +42,8 @@ export const resetPassword = AsyncHandler(async (req, res) => {
     throw new ApiError(400, "Email, OTP and new password are required", "FIELDS_REQUIRED");
   }
 
-   if (newPassword.length < 8) {
-     throw new ApiError(400, "Password must be at least 8 characters", "WEAK_PASSWORD");
+   if (newPassword.length < 6) {
+     throw new ApiError(400, "Password must be at least 6 characters", "WEAK_PASSWORD");
    }
    if (!/[A-Z]/.test(newPassword)) {
      throw new ApiError(400, "Password must contain an uppercase letter", "WEAK_PASSWORD");
