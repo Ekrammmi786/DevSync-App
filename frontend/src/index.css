@@ -15,18 +15,145 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
     background: #dce2c7;
-    border-radius: 4px;
+    border-radius: 3px;
   }
+
   ::-webkit-scrollbar-thumb:hover {
     background: #c3cf9d;
   }
+}
+
+@layer components {
+  .chat-container {
+    @apply flex h-screen bg-base-200 overflow-hidden;
+  }
+
+  .conversation-panel {
+    @apply w-full md:w-80 lg:w-96 border-r border-base-300 bg-base-100 flex flex-col flex-none;
+  }
+
+  .chat-panel {
+    @apply flex-1 flex flex-col h-full bg-base-100 min-w-0;
+  }
+
+  .thread-panel {
+    @apply w-80 lg:w-96 border-l border-base-300 bg-base-100 flex-col flex-none hidden md:flex;
+  }
+
+  .conversation-item {
+    @apply flex items-center gap-3 p-3 rounded-xl transition-all cursor-pointer border border-transparent;
+  }
+
+  .conversation-item:hover {
+    @apply bg-base-200 border-base-300;
+  }
+
+  .conversation-item.active {
+    @apply bg-primary/10 border-primary/30;
+  }
+
+  .message-bubble-sent {
+    @apply chat-bubble bg-primary text-primary-content rounded-2xl rounded-br-md;
+  }
+
+  .message-bubble-received {
+    @apply chat-bubble bg-base-200 text-base-content rounded-2xl rounded-bl-md;
+  }
+
+  .message-actions {
+    @apply flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity;
+  }
+
+  .reaction-picker {
+    @apply absolute bottom-full left-0 mb-2 bg-base-100 border border-base-300 rounded-xl shadow-lg p-2 flex gap-1 z-20;
+  }
+
+  .reaction-btn {
+    @apply text-lg hover:scale-125 transition-transform cursor-pointer p-1 rounded-lg hover:bg-base-200;
+  }
+
+  .thread-indicator {
+    @apply text-xs text-primary hover:underline cursor-pointer mt-1;
+  }
+
+  .file-attachment {
+    @apply mt-2 p-3 bg-base-200/50 rounded-xl border border-base-300 flex items-center gap-3 max-w-xs cursor-pointer hover:bg-base-200 transition-colors;
+  }
+
+  .typing-indicator {
+    @apply flex items-center gap-1 text-xs text-base-content/60 px-4 py-2;
+  }
+
+  .typing-dot {
+    @apply w-1.5 h-1.5 bg-base-content/40 rounded-full animate-bounce;
+  }
+
+  .online-status {
+    @apply absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-base-100;
+  }
+
+  .unread-badge {
+    @apply badge badge-primary badge-sm min-w-[1.25rem] h-5 flex items-center justify-center;
+  }
+
+  .chat-input-area {
+    @apply p-3 border-t border-base-200 bg-base-100 flex items-end gap-2;
+  }
+
+  .message-input {
+    @apply input input-bordered w-full resize-none;
+  }
+
+  .attachment-preview {
+    @apply relative p-2 bg-base-200 rounded-xl border border-base-300;
+  }
+
+  .remove-attachment {
+    @apply absolute -top-2 -right-2 w-5 h-5 bg-error text-white rounded-full flex items-center justify-center text-xs cursor-pointer hover:bg-error/80;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .animate-slideIn {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .animate-slideInRight {
+    animation: slideInRight 0.3s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }

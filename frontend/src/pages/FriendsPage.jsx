@@ -12,6 +12,7 @@ const FriendsPage = () => {
 
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: friendsData, isLoading: floading } = useMyFriends(20);
   const { data: requestsData, isLoading: rloading } = useFriendRequests(10);
@@ -70,6 +71,18 @@ const FriendsPage = () => {
           <p className="text-base-content/60 mt-1">Your learning buddies and the developers you've connected with.</p>
         </div>
 
+        {/* Search Bar */}
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search friends by name, role, or tech stack..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input input-bordered w-full pl-12"
+          />
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/40 text-lg">🔍</span>
+        </div>
+
         {!rloading && requests.length > 0 && (
           <div className="card bg-base-100 shadow-xl">
             <div className="card-body">
@@ -108,15 +121,39 @@ const FriendsPage = () => {
           </div>
         ) : friends.length ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {friends.map((f) => (
-              <div key={f._id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+            {friends
+              .filter((f) => 
+                f.fullname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                f.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (f.techStack || []).some(tech => 
+                  tech.toLowerCase().includes(searchQuery.toLowerCase())
+                ) ||
+                (f.codinglanguage || []).some(tech => 
+                  tech.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+              )
+              .map((f) => (
+              <div 
+                key={f._id} 
+                className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow cursor-pointer active:scale-95" 
+                onClick={(e) => {
+                  // Only navigate if not clicking on buttons or profile
+                  if (!e.target.closest('button') && !e.target.closest('.avatar')) {
+                    navigate(`/chat?userId=${f._id}`);
+                  }
+                }}
+              >
                 <div className="card-body items-center text-center">
-                  <div className="avatar cursor-pointer" onClick={() => handleOpenProfile(f._id)}>
-                    <div className="w-16 rounded-full ring-2 ring-primary/20"><img src={f.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt={f.fullname} /></div>
+                  <div className="avatar relative" onClick={(e) => { e.stopPropagation(); handleOpenProfile(f._id); }}>
+                    <div className="w-16 rounded-full ring-2 ring-primary/20">
+                      <img src={f.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt={f.fullname} />
+                    </div>
+                    {/* Online Status Indicator */}
+                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-base-100"></div>
                   </div>
                   <h3
-                    className="font-semibold text-base-content cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => handleOpenProfile(f._id)}
+                    className="font-semibold text-base-content hover:text-primary transition-colors cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); handleOpenProfile(f._id); }}
                   >
                     {f.fullname}
                   </h3>
@@ -129,10 +166,10 @@ const FriendsPage = () => {
                     {f.badges?.[0] && <span className="badge badge-outline">{f.badges[0]}</span>}
                   </div>
                   <div className="flex gap-2 mt-3 w-full">
-                    <button className="btn btn-outline btn-sm flex-1" onClick={() => handleOpenProfile(f._id)}>
+                    <button className="btn btn-outline btn-sm flex-1" onClick={(e) => { e.stopPropagation(); handleOpenProfile(f._id); }}>
                       👤 Profile
                     </button>
-                    <button className="btn btn-primary btn-sm flex-1" onClick={() => navigate(`/chat?userId=${f._id}`)}>
+                    <button className="btn btn-primary btn-sm flex-1" onClick={(e) => { e.stopPropagation(); navigate(`/chat?userId=${f._id}`); }}>
                       💬 Message
                     </button>
                   </div>
@@ -144,9 +181,15 @@ const FriendsPage = () => {
           <div className="card bg-base-100 shadow-xl">
             <div className="card-body items-center text-center py-10">
               <span className="text-5xl mb-3">🤝</span>
-              <p className="text-base-content/60">You don't have any friends yet.</p>
-              <p className="text-sm text-base-content/50">Find developers to connect with.</p>
-              <Link to="/find" className="btn btn-primary btn-sm mt-3">Find Developers</Link>
+              <p className="text-base-content/60">
+                {searchQuery ? "No friends match your search criteria." : "You don't have any friends yet."}
+              </p>
+              <p className="text-sm text-base-content/50">
+                {searchQuery ? "Try a different search term." : "Find developers to connect with."}
+              </p>
+              {!searchQuery && (
+                <Link to="/find" className="btn btn-primary btn-sm mt-3">Find Developers</Link>
+              )}
             </div>
           </div>
         )}

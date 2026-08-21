@@ -17,6 +17,7 @@ const HomePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { mutate: logout } = useLogout();
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const {
     data: recommendedData,
@@ -56,6 +57,14 @@ const isNotOnboarded = user && !user.isOnBoarded;
     <div className="min-h-screen bg-base-200">
       <div className="navbar bg-base-100 shadow-sm sticky top-0 z-30">
         <div className="navbar-start">
+          <div className="lg:hidden">
+            <button 
+              className="btn btn-ghost btn-circle"
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+            >
+              <span className="text-xl">☰</span>
+            </button>
+          </div>
           <Link to="/dashboard" className="flex items-center gap-2 px-2">
             <span className="text-2xl">⚡</span>
             <span className="font-bold text-lg text-primary">DevSync</span>
@@ -69,6 +78,7 @@ const isNotOnboarded = user && !user.isOnBoarded;
             <li><Link to="/chat">Chat</Link></li>
             <li><Link to="/calls">Calls</Link></li>
             <li><Link to="/notifications">Notifications</Link></li>
+           
             {user?.isAdmin && <li><Link to="/admin">Admin</Link></li>}
           </ul>
         </div>
@@ -90,6 +100,21 @@ const isNotOnboarded = user && !user.isOnBoarded;
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      {showMobileMenu && (
+        <div className="lg:hidden bg-base-100 border-b border-base-200 p-4">
+          <ul className="menu menu-vertical gap-2">
+            <li><Link to="/dashboard" className="font-medium" onClick={() => setShowMobileMenu(false)}>Home</Link></li>
+            <li><Link to="/find" onClick={() => setShowMobileMenu(false)}>Find Developers</Link></li>
+            <li><Link to="/friends" onClick={() => setShowMobileMenu(false)}>Friends</Link></li>
+            <li><Link to="/chat" onClick={() => setShowMobileMenu(false)}>Chat</Link></li>
+            <li><Link to="/calls" onClick={() => setShowMobileMenu(false)}>Calls</Link></li>
+            <li><Link to="/notifications" onClick={() => setShowMobileMenu(false)}>Notifications</Link></li>
+            {user?.isAdmin && <li><Link to="/admin" onClick={() => setShowMobileMenu(false)}>Admin</Link></li>}
+          </ul>
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
         {isNotOnboarded && (

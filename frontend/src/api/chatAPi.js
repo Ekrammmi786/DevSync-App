@@ -8,3 +8,8 @@ export const getVideoTokenApi = () =>
 
 export const getOrCreateChannelApi = (userId) =>
   axiosInstance.post(`/chat/channel/${userId}`).then((res) => res.data);
+
+export const uploadChatFileApi = (formData) =>
+  axiosInstance.post("/chat/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  }).then((res) => res.data);
