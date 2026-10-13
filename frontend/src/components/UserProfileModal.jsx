@@ -216,15 +216,8 @@ const UserProfileModal = ({ userId, isOpen, onClose }) => {
             </button>
           </div>
         )}
-             
-            
-            <button className="btn btn-ghost" onClick={onClose}>
-              Close
-            </button>
-          </div>
-      
       </div>
-    
+    </div>
   );
 };
 

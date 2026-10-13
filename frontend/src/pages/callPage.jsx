@@ -6,10 +6,12 @@ import { useVideoToken } from "../hooks/useChat";
 import {
   StreamVideo,
   StreamVideoClient,
-  Call,
+  StreamCall,
+  StreamTheme,
   CallControls,
-  ParticipantView,
+  SpeakerLayout,
 } from "@stream-io/video-react-sdk";
+import "@stream-io/video-react-sdk/dist/css/styles.css"; // Ensure styles are imported!
 
 const apiKey = import.meta.env.VITE_STREAM_API_KEY;
 
@@ -25,32 +27,64 @@ const CallPage = () => {
 
   const [activeCallId, setActiveCallId] = useState(null);
   const [isCallActive, setIsCallActive] = useState(false);
+  const [client, setClient] = useState(null);
+  const [call, setCall] = useState(null);
+  const [isJoining, setIsJoining] = useState(false);
 
-  const client = videoToken
-    ? new StreamVideoClient({ apiKey, token: videoToken, user: { id: user?._id, name: user?.fullname } })
-    : null;
+  useEffect(() => {
+    if (videoToken && user?._id && !client) {
+      const _client = new StreamVideoClient({
+        apiKey,
+        token: videoToken,
+        user: { id: user._id, name: user.fullname },
+      });
+      setClient(_client);
+
+      return () => {
+        _client.disconnectUser();
+      };
+    }
+  }, [videoToken, user?._id, user?.fullname, client]);
 
   const startCall = useCallback(
-    (friendId) => {
+    async (friendId) => {
+      if (!client || isJoining) return;
       const callId = [user._id, friendId].sort().join("-");
       setActiveCallId(callId);
       setIsCallActive(true);
+      setIsJoining(true);
+      
+      try {
+        const newCall = client.call("default", callId);
+        await newCall.join({ create: true });
+        setCall(newCall);
+      } catch (err) {
+        console.error("Failed to join video call:", err);
+        setIsCallActive(false);
+        setActiveCallId(null);
+      } finally {
+        setIsJoining(false);
+      }
     },
-    [user._id]
+    [user._id, client, isJoining]
   );
 
-  const endCall = useCallback(() => {
+  const endCall = useCallback(async () => {
+    if (call) {
+      await call.leave();
+    }
     setIsCallActive(false);
     setActiveCallId(null);
+    setCall(null);
     navigate("/calls");
-  }, [navigate]);
+  }, [call, navigate]);
 
   useEffect(() => {
     const targetUserId = searchParams.get("userId");
-    if (targetUserId && !isCallActive) {
+    if (targetUserId && !isCallActive && client) {
       startCall(targetUserId);
     }
-  }, [searchParams, startCall, isCallActive]);
+  }, [searchParams, startCall, isCallActive, client]);
 
   if (!videoToken || !client) {
     return (
@@ -63,41 +97,29 @@ const CallPage = () => {
 
   if (isCallActive && activeCallId) {
     return (
-      <div className="h-screen flex flex-col bg-base-200 overflow-hidden">
-        <div className="navbar bg-base-100 shadow-sm border-b border-base-200 z-20 flex-none px-4">
-          <div className="navbar-start">
-            <Link to="/dashboard" className="flex items-center gap-2">
-              <span className="text-2xl">⚡</span>
-              <span className="font-bold text-lg text-primary">DevSync</span>
-            </Link>
-          </div>
-          <div className="navbar-center hidden lg:flex">
-            <ul className="menu menu-horizontal px-1">
-              <li><Link to="/dashboard">Home</Link></li>
-              <li><Link to="/find">Find Developers</Link></li>
-              <li><Link to="/friends">Friends</Link></li>
-              <li><Link to="/chat">Chat</Link></li>
-              <li><Link to="/calls" className="font-medium text-primary">Calls</Link></li>
-              <li><Link to="/notifications">Notifications</Link></li>
-            </ul>
-          </div>
-          <div className="navbar-end">
-            <button onClick={endCall} className="btn btn-error text-white">
-              End Call
-            </button>
-          </div>
+      <div className="h-[calc(100vh-4rem)] flex flex-col bg-base-200 overflow-hidden">
+        <div className="p-2 flex justify-end">
+          <button onClick={endCall} className="btn btn-error text-white">
+            Leave Call
+          </button>
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-4">
+        <div className="flex-1 bg-black overflow-hidden relative">
           <StreamVideo client={client}>
-            <Call callId={activeCallId} type="default" onCreate={async (call) => {
-              await call.join({ create: true });
-            }}>
-              <div className="w-full max-w-4xl aspect-video bg-base-300 rounded-2xl overflow-hidden relative">
-                <ParticipantView />
-              </div>
-              <CallControls />
-            </Call>
+            {call ? (
+              <StreamCall call={call}>
+                <StreamTheme className="h-full">
+                  <div className="h-full flex flex-col justify-center items-center">
+                     <SpeakerLayout />
+                     <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2">
+                        <CallControls onLeave={endCall} />
+                     </div>
+                  </div>
+                </StreamTheme>
+              </StreamCall>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-white">Joining call...</div>
+            )}
           </StreamVideo>
         </div>
       </div>
@@ -105,43 +127,7 @@ const CallPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-base-200">
-      <div className="navbar bg-base-100 shadow-sm sticky top-0 z-30">
-        <div className="navbar-start">
-          <Link to="/dashboard" className="flex items-center gap-2 px-2">
-            <span className="text-2xl">⚡</span>
-            <span className="font-bold text-lg text-primary">DevSync</span>
-          </Link>
-        </div>
-        <div className="navbar-center hidden lg:flex">
-          <ul className="menu menu-horizontal px-1">
-            <li><Link to="/dashboard" className="font-medium">Home</Link></li>
-            <li><Link to="/find">Find Developers</Link></li>
-            <li><Link to="/friends">Friends</Link></li>
-            <li><Link to="/chat">Chat</Link></li>
-            <li><Link to="/calls" className="font-medium text-primary">Calls</Link></li>
-            <li><Link to="/notifications">Notifications</Link></li>
-          </ul>
-        </div>
-        <div className="navbar-end gap-2">
-          <div className="dropdown dropdown-end">
-            <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
-              <div className="w-10 rounded-full">
-                <img src={user?.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt="avatar" />
-              </div>
-            </div>
-            <ul tabIndex={0} className="menu menu-sm dropdown-content bg-base-100 rounded-box z-10 mt-3 w-52 p-2 shadow">
-              <li className="menu-title px-4 py-2">
-                {user?.fullname || 'User'} <br />
-                <span className="text-xs font-normal text-base-content/60">{user?.email}</span>
-              </li>
-              <li><Link to="/onboarding">Edit Profile</Link></li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
+    <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-base-content">Calls</h1>
           <p className="text-base-content/60 mt-1">Start a voice or video call with your friends.</p>
@@ -199,7 +185,6 @@ const CallPage = () => {
           </div>
         )}
       </main>
-    </div>
   );
 };
 

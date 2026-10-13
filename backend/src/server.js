@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import { connectDB } from "./lib/db.js";
 import cors from "cors";
 import chatroutes from "./routes/chat.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
 import compression from "compression";
 import helmet from "helmet";
 import mongoose from "mongoose";
@@ -54,6 +55,7 @@ app.use(maintenanceCheck);
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/chat", chatroutes);
+app.use("/api/notifications", notificationRoutes);
 app.use("/api/admin", adminRoutes);
 
 app.use((req, res) => {

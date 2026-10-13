@@ -47,20 +47,7 @@ const AdminPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-base-200">
-      <div className="navbar bg-base-100 shadow-sm sticky top-0 z-30">
-        <div className="navbar-start">
-          <Link to="/dashboard" className="flex items-center gap-2 px-2">
-            <span className="text-2xl">⚡</span>
-            <span className="font-bold text-lg text-primary">DevSync Admin</span>
-          </Link>
-        </div>
-        <div className="navbar-end">
-          <button onClick={() => logout()} className="btn btn-ghost btn-sm">Logout</button>
-        </div>
-      </div>
-
-      <div className="flex">
+    <div className="flex">
         <div className="w-56 bg-base-100 min-h-screen border-r border-base-300 hidden md:block">
           <ul className="menu p-4 gap-1">
             <li><button onClick={() => setTab('dashboard')} className={tab === 'dashboard' ? 'active' : ''}>📊 Dashboard</button></li>
@@ -262,7 +249,6 @@ const AdminPage = () => {
           )}
         </main>
       </div>
-    </div>
   );
 };
 

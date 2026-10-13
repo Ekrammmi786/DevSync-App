@@ -12,6 +12,9 @@ export const useStreamToken = () => {
     queryKey: ["chat", "token"],
     queryFn: getStreamTokenApi,
     retry: false,
+    staleTime: 1000 * 60 * 30, // 30 minutes cache - avoids re-fetching on every page visit
+    gcTime: 1000 * 60 * 60,
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -20,6 +23,9 @@ export const useVideoToken = () => {
     queryKey: ["video", "token"],
     queryFn: getVideoTokenApi,
     retry: false,
+    staleTime: 1000 * 60 * 30, // 30 minutes cache
+    gcTime: 1000 * 60 * 60,
+    refetchOnWindowFocus: false,
   });
 };
 

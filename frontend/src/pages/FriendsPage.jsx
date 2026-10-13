@@ -1,14 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useLogout } from '../hooks/useAuth';
 import { useMyFriends, useFriendRequests, useAcceptFriendRequest, useRejectFriendRequest } from '../hooks/useUser';
 import UserProfileModal from '../components/UserProfileModal';
 
 const FriendsPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { mutate: logout } = useLogout();
 
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -28,43 +24,7 @@ const FriendsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-base-200">
-      <div className="navbar bg-base-100 shadow-sm sticky top-0 z-30">
-        <div className="navbar-start">
-          <Link to="/dashboard" className="flex items-center gap-2 px-2">
-            <span className="text-2xl">⚡</span>
-            <span className="font-bold text-lg text-primary">DevSync</span>
-          </Link>
-        </div>
-        <div className="navbar-center hidden lg:flex">
-          <ul className="menu menu-horizontal px-1">
-            <li><Link to="/dashboard" className="font-medium">Home</Link></li>
-            <li><Link to="/find">Find Developers</Link></li>
-            <li><Link to="/friends" className="font-medium text-primary">Friends</Link></li>
-            <li><Link to="/chat">Chat</Link></li>
-            <li><Link to="/calls">Calls</Link></li>
-            <li><Link to="/notifications">Notifications</Link></li>
-          </ul>
-        </div>
-        <div className="navbar-end gap-2">
-          <div className="dropdown dropdown-end">
-            <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
-              <div className="w-10 rounded-full">
-                <img src={user?.profilePic || 'https://testingbot.com/free-online-tools/random-avatar/411'} alt="avatar" />
-              </div>
-            </div>
-            <ul tabIndex={0} className="menu menu-sm dropdown-content bg-base-100 rounded-box z-10 mt-3 w-52 p-2 shadow">
-              <li className="menu-title px-4 py-2">
-                {user?.fullname || 'User'} <br />
-                <span className="text-xs font-normal text-base-content/60">{user?.email}</span>
-              </li>
-              <li><Link to="/onboarding">Edit Profile</Link></li>
-              <li><button onClick={() => logout()}>Logout</button></li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
+    <>
       <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-base-content">My Friends</h1>
@@ -200,7 +160,7 @@ const FriendsPage = () => {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
       />
-    </div>
+    </>
   );
 };
 

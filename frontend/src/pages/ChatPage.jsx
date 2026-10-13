@@ -15,6 +15,8 @@ import "stream-chat-react/dist/css/index.css";
 import { useAuth } from "../context/AuthContext";
 import { useStreamToken, useOrCreateChannel } from "../hooks/useChat";
 import { useMyFriends, useRemoveFriend } from "../hooks/useUser";
+import { ArrowLeft, User, Video, MessageSquare, Users, PhoneCall } from "lucide-react";
+import NotificationDropdown from "../components/layout/NotificationDropdown";
 import UserProfileModal from "../components/UserProfileModal";
 import toast from "react-hot-toast";
 
@@ -63,15 +65,6 @@ const ChatPage = () => {
     }
   };
 
-  const refreshChannelList = async () => {
-    if (!client) return;
-    try {
-      await client.channels.query();
-    } catch (err) {
-      console.error("Failed to refresh channels:", err);
-    }
-  };
-
   const client = useCreateChatClient({
     apiKey,
     tokenOrProvider: token,
@@ -82,20 +75,14 @@ const ChatPage = () => {
     },
   });
 
-  useEffect(() => {
-    if (!client || !friends.length) return;
-
-    const users = {};
-    friends.forEach((f) => {
-      users[f._id] = {
-        id: f._id,
-        name: f.fullname || "User",
-        image: f.profilePic || undefined,
-      };
-    });
-
-    client.upsertUsers(users);
-  }, [client, friends]);
+  const refreshChannelList = async () => {
+    if (!client) return;
+    try {
+      await client.queryChannels(filters, sort, options);
+    } catch (err) {
+      console.error("Failed to refresh channels:", err);
+    }
+  };
 
   useEffect(() => {
     if (!client) return;
@@ -107,19 +94,6 @@ const ChatPage = () => {
 
     const initChannelWithUser = async () => {
       try {
-        const targetFriend = friends.find((f) => f._id === targetUserId);
-        if (targetFriend) {
-          client.upsertUsers({
-            [targetUserId]: {
-              id: targetUserId,
-              name: targetFriend.fullname || "User",
-              image: targetFriend.profilePic || undefined,
-            },
-          });
-        }
-
-        await createChannelBackend(targetUserId);
-
         const channelId = [userId, targetUserId].sort().join("-");
         const channel = client.channel("messaging", channelId, {
           members: [userId, targetUserId],
@@ -127,6 +101,11 @@ const ChatPage = () => {
         await channel.watch();
         setActiveChannel(channel);
         setActiveTab("chats");
+
+        // Fire-and-forget backend sync so user is not blocked
+        createChannelBackend(targetUserId).catch((err) => {
+          console.debug("Backend channel sync completed/skipped", err);
+        });
       } catch (err) {
         console.error("Error creating or joining channel:", err);
         toast.error(err?.response?.data?.message || "Could not open chat");
@@ -134,23 +113,11 @@ const ChatPage = () => {
     };
 
     initChannelWithUser();
-  }, [client, targetUserId, userId, friends]);
+  }, [client, targetUserId, userId]);
 
   const handleStartChatWithFriend = async (friendId) => {
     if (!client || !userId) return;
     try {
-      const targetFriend = friends.find((f) => f._id === friendId);
-      if (targetFriend) {
-        client.upsertUsers({
-          [friendId]: {
-            id: friendId,
-            name: targetFriend.fullname || "User",
-            image: targetFriend.profilePic || undefined,
-          },
-        });
-      }
-
-      await createChannelBackend(friendId);
       const channelId = [userId, friendId].sort().join("-");
       const channel = client.channel("messaging", channelId, {
         members: [userId, friendId],
@@ -159,6 +126,11 @@ const ChatPage = () => {
       setActiveChannel(channel);
       setActiveTab("chats");
       setSearchParams({ userId: friendId });
+
+      // Async background sync to prevent lag
+      createChannelBackend(friendId).catch((err) => {
+        console.debug("Backend channel sync completed/skipped", err);
+      });
     } catch (err) {
       console.error("Failed to start chat with friend:", err);
       toast.error(err?.response?.data?.message || "Could not start chat");
@@ -186,13 +158,28 @@ const ChatPage = () => {
   return (
     <div className="h-screen flex flex-col bg-base-200 overflow-hidden">
       {/* Top Navigation */}
-      <div className="navbar bg-base-100 shadow-sm border-b border-base-200 z-20 flex-none px-4">
-        <div className="navbar-start">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <span className="text-2xl">⚡</span>
-            <span className="font-bold text-lg text-primary">DevSync</span>
+      <div className="navbar bg-base-100 shadow-sm border-b border-base-200 z-20 flex-none px-3 sm:px-4 min-h-[3.5rem]">
+        <div className="navbar-start flex items-center gap-1.5 sm:gap-2">
+          {/* Mobile Back Button when in a conversation */}
+          {activeChannel && (
+            <button
+              onClick={() => {
+                setActiveChannel(null);
+                setSearchParams({});
+              }}
+              className="btn btn-ghost btn-circle btn-sm md:hidden text-base-content hover:bg-base-200"
+              title="Back to conversations"
+            >
+              <ArrowLeft size={18} />
+            </button>
+          )}
+
+          <Link to="/dashboard" className="flex items-center gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-2xl">⚡</span>
+            <span className="font-bold text-base sm:text-lg text-primary">DevSync</span>
           </Link>
         </div>
+
         <div className="navbar-center hidden lg:flex">
           <ul className="menu menu-horizontal px-1">
             <li><Link to="/dashboard">Home</Link></li>
@@ -203,31 +190,41 @@ const ChatPage = () => {
             <li><Link to="/notifications">Notifications</Link></li>
           </ul>
         </div>
-        <div className="navbar-end gap-2">
+
+        <div className="navbar-end gap-1.5 sm:gap-2">
           {otherMemberId && (
-            <>
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => handleOpenProfile(otherMemberId)}
-                className="btn btn-sm btn-outline btn-primary gap-1"
+                className="btn btn-xs sm:btn-sm btn-outline btn-primary gap-1 px-2 sm:px-3"
+                title="View Profile"
               >
-                <span>👤</span> View Profile
+                <User size={14} />
+                <span className="hidden sm:inline">Profile</span>
               </button>
               <button
                 onClick={() => navigate(`/calls?userId=${otherMemberId}`)}
-                className="btn btn-sm btn-success gap-1"
+                className="btn btn-xs sm:btn-sm btn-success gap-1 px-2 sm:px-3 text-white"
+                title="Start Video Call"
               >
-                <span>📹</span> Call
+                <Video size={14} />
+                <span className="hidden sm:inline">Call</span>
               </button>
-            </>
+            </div>
           )}
+          <NotificationDropdown />
         </div>
       </div>
 
       {/* Main Chat Interface */}
       <div className="flex-1 flex overflow-hidden">
         <Chat client={client}>
-          {/* Sidebar */}
-          <div className="w-full md:w-80 lg:w-96 border-r border-base-300 bg-base-100 flex flex-col flex-none">
+          {/* Sidebar - on mobile: hidden when channel is active; on md+: always visible */}
+          <div
+            className={`w-full md:w-80 lg:w-96 border-r border-base-300 bg-base-100 flex flex-col flex-none ${
+              activeChannel ? "hidden md:flex" : "flex"
+            }`}
+          >
             {/* Sidebar Tab Switcher */}
             <div className="p-3 border-b border-base-200 bg-base-100">
               <div className="join w-full bg-base-200 p-1 rounded-xl">
@@ -261,6 +258,7 @@ const ChatPage = () => {
                     options={options}
                     onSelect={(channel) => {
                       setActiveChannel(channel);
+                      setActiveTab("chats");
                       const partner = Object.keys(channel.state.members || {}).find(
                         (mId) => mId !== userId
                       );
@@ -389,8 +387,12 @@ const ChatPage = () => {
             </div>
           </div>
 
-          {/* Main Channel Area */}
-          <div className="flex-1 flex flex-col h-full bg-base-100">
+          {/* Main Channel Area - on mobile: visible only when channel is active; on md+: always visible */}
+          <div
+            className={`flex-1 flex flex-col h-full bg-base-100 min-w-0 overflow-hidden ${
+              !activeChannel ? "hidden md:flex" : "flex"
+            }`}
+          >
             {activeChannel ? (
               <Channel channel={activeChannel}>
                 <Window>

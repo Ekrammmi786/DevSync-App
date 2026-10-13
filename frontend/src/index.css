@@ -157,3 +157,59 @@
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+
+/* Stream Chat Mobile Responsiveness & Performance */
+.str-chat {
+  height: 100% !important;
+  font-family: inherit !important;
+  background-color: transparent !important;
+}
+
+.str-chat__channel {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.str-chat__channel-list {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.str-chat__main-panel {
+  height: 100% !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+.str-chat__list {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+.str-chat__header-livestream,
+.str-chat__header {
+  padding: 0.625rem 1rem !important;
+  border-bottom: 1px solid oklch(var(--b3, 0.9 0 0)) !important;
+}
+
+.str-chat__message-textarea {
+  font-size: 0.95rem !important;
+}
+
+.str-chat__channel-preview {
+  cursor: pointer !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.str-chat__channel-preview:hover {
+  background-color: oklch(var(--b2, 0.95 0 0)) !important;
+}
+
+.str-chat__channel-preview--active,
+.str-chat__channel-preview-messenger--active {
+  background-color: oklch(var(--p, 0.6 0.18 135) / 0.12) !important;
+  border-left: 3px solid oklch(var(--p, 0.6 0.18 135)) !important;
+}
+
+
