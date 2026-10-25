@@ -204,7 +204,15 @@ export const createUser = AsyncHandler(async (req, res) => {
     });
     delCache("admin-dashboard");
     delCacheByPattern("admin-users-");
-    res.status(201).json({ success: true, data: user });
+    const safeUser = user.toObject();
+    delete safeUser.password;
+    delete safeUser.refreshToken;
+    delete safeUser.otpHash;
+    delete safeUser.otpExpiry;
+    delete safeUser.otpAttempts;
+    delete safeUser.otpResendCount;
+    delete safeUser.otpResendWindowStart;
+    res.status(201).json({ success: true, data: safeUser });
 });
 
 export const updateUser = AsyncHandler(async (req, res) => {

@@ -7,7 +7,7 @@ const isAuthPath = (url) => AUTH_PATHS.some((path) => url?.includes(path));
 const isPublicPath = () => PUBLIC_PATHS.includes(window.location.pathname);
 
 export const axiosInstance = axios.create({
-    baseURL: "http://localhost:5002/api",
+    baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5002/api",
     withCredentials: true,
 });
 

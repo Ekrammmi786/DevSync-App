@@ -17,10 +17,10 @@ const UserProfileModal = ({ userId, isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-lg bg-base-100 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-lg bg-base-100/90 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header bar */}
-        <div className="flex items-center justify-between p-4 border-b border-base-200">
+        <div className="flex items-center justify-between p-4 border-b border-white/10">
           <h3 className="font-bold text-lg text-base-content flex items-center gap-2">
             <span>👤</span> Developer Profile
           </h3>

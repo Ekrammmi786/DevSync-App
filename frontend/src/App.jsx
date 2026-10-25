@@ -13,17 +13,17 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import OnboardingPage from './pages/OnboardingPage';
 
 // App pages (with navbar via AppLayout)
-import HomePage from './pages/homePage';
+import HomePage from './pages/HomePage';
 import ChatPage from './pages/ChatPage';
-import CallPage from './pages/callPage';
-import NotificationPage from './pages/notificationPage';
+import CallPage from './pages/CallPage';
+import NotificationPage from './pages/NotificationPage';
 import SearchUsersPage from './pages/SearchUsersPage';
 import FriendsPage from './pages/FriendsPage';
 import AdminPage from './pages/AdminPage';
 
 const App = () => {
   return (
-    <div className='h-screen' data-theme="olive">
+    <div className='min-h-screen bg-base-200 text-base-content selection:bg-secondary/30 selection:text-white' data-theme="cosmic">
       <AuthProvider>
         <Routes>
           {/* Public / Guest routes — no navbar */}

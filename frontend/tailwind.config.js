@@ -1,26 +1,22 @@
 import daisyui from 'daisyui';
 
 export default {
-  content: ["./index.html","./src/**/*.{js,ts,jsx,tsx}"],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
-        // Central 2-colour palette: White + Dark Olive
-        olive: {
-          50: '#f7f8f4',
-          100: '#eef0e6',
-          200: '#dce2c7',
-          300: '#c3cf9d',
-          400: '#a6b76b',
-          500: '#8a9c4e',
-          600: '#6b7c3a',
-          700: '#556B2F', // dark olive (primary/main)
-          800: '#465a28',
-          900: '#3b4a24',
-          950: '#1d2711',
+        cosmic: {
+          950: '#0a0616',
+          900: '#0f0926',
+          850: '#160f38',
+          800: '#1d143e',
+          700: '#2a1e54',
+          core: '#f59e0b',
+          mid: '#a855f7',
+          rim: '#6366f1',
+          cyan: '#06b6d4',
+          emerald: '#10b981',
         },
-        // Pure white background
-        ivory: '#ffffff',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
@@ -33,19 +29,46 @@ export default {
   daisyui: {
     themes: [
       {
-        olive: {
-          "primary": "#556B2F",          // dark olive
+        cosmic: {
+          "primary": "#f59e0b",
           "primary-content": "#ffffff",
-          "secondary": "#8a9c4e",        // lighter olive
+          "secondary": "#a855f7",
+          "secondary-content": "#ffffff",
+          "accent": "#06b6d4",
+          "accent-content": "#ffffff",
+          "neutral": "#1e1342",
+          "neutral-content": "#f3f4f6",
+          "base-100": "#0f0926",
+          "base-200": "#0a0616",
+          "base-300": "#1d143e",
+          "base-content": "#f3f4f6",
+          "info": "#6366f1",
+          "info-content": "#ffffff",
+          "success": "#10b981",
+          "success-content": "#ffffff",
+          "warning": "#f59e0b",
+          "warning-content": "#ffffff",
+          "error": "#ef4444",
+          "error-content": "#ffffff",
+          "--rounded-box": "0.75rem",
+          "--rounded-btn": "0.5rem",
+          "--rounded-badge": "9999px",
+          "--btn-text-case": "none",
+          "--btn-focus-scale": "0.98",
+        },
+        olive: {
+          "primary": "#556B2F",
+          "primary-content": "#ffffff",
+          "secondary": "#8a9c4e",
           "secondary-content": "#1d2711",
           "accent": "#6b7c3a",
           "accent-content": "#ffffff",
           "neutral": "#556B2F",
           "neutral-content": "#ffffff",
-          "base-100": "#ffffff",         // white background
-          "base-200": "#f7f8f4",         // very light olive tint
+          "base-100": "#ffffff",
+          "base-200": "#f7f8f4",
           "base-300": "#eef0e6",
-          "base-content": "#1d2711",     // dark text
+          "base-content": "#1d2711",
           "info": "#556B2F",
           "info-content": "#ffffff",
           "success": "#6b7c3a",
@@ -61,7 +84,6 @@ export default {
           "--btn-focus-scale": "0.98",
         },
       },
-      "light",
       "dark",
     ],
   },

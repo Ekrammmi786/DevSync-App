@@ -51,6 +51,8 @@ export async function signup(req, res) {
       techStack,
     });
 
+    const safeUser = await User.findById(newUser._id).select("-password -refreshToken -otpHash -otpExpiry -otpAttempts -otpResendCount -otpResendWindowStart");
+
     const otpPromise = (async () => {
       const otp = generateOTP();
       await User.findByIdAndUpdate(newUser._id, {
@@ -110,7 +112,7 @@ export async function signup(req, res) {
 
     return res.status(201).json({
       success: true,
-      data: newUser,
+      data: safeUser,
     });
   } catch (error) {
     console.error(error);
@@ -192,9 +194,19 @@ export async function login(req, res) {
       secure: process.env.NODE_ENV === "production",
     });
 
+    // Strip sensitive fields from login response
+    const safeLoginUser = user.toObject();
+    delete safeLoginUser.password;
+    delete safeLoginUser.refreshToken;
+    delete safeLoginUser.otpHash;
+    delete safeLoginUser.otpExpiry;
+    delete safeLoginUser.otpAttempts;
+    delete safeLoginUser.otpResendCount;
+    delete safeLoginUser.otpResendWindowStart;
+
     return res.status(200).json({
       success: true,
-      data: user,
+      data: safeLoginUser,
     });
   } catch (error) {
     console.error(error);
@@ -354,6 +366,16 @@ export async function onboard(req, res) {
       });
     }
 
+    // Fetch existing user first to preserve old profilePic if none provided
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+        code: "USER_NOT_FOUND",
+      });
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
@@ -372,19 +394,11 @@ export async function onboard(req, res) {
         linkedinUsername: linkedinUsername || "",
         portfolioUrl: portfolioUrl || "",
         experience: experience || "",
-        profilePic: profilePic || updatedUser?.profilePic || "",
+        profilePic: profilePic || existingUser.profilePic || "",
         isOnBoarded: true,
       },
       { new: true },
     );
-
-    if (!updatedUser) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-        code: "USER_NOT_FOUND",
-      });
-    }
 
     const devScoreResult = calculateDevScore(updatedUser);
 

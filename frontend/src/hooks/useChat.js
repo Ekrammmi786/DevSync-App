@@ -4,7 +4,7 @@ import {
   getOrCreateChannelApi,
   getVideoTokenApi,
   uploadChatFileApi,
-} from "../api/chatAPi";
+} from "../api/chatApi";
 import toast from "react-hot-toast";
 
 export const useStreamToken = () => {

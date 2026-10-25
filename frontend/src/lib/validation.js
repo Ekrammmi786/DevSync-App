@@ -6,12 +6,13 @@ export const signupSchema = z.object({
     .min(2, "Full name must be at least 2 characters")
     .max(50, "Full name must be at most 50 characters"),
   email: z.string().email("Invalid email format"),
-password: z
+  password: z
     .string()
-    .min(6, "Password must be at least 6 characters")
+    .min(8, "Password must be at least 8 characters")        // matches backend (min 8)
     .regex(/[A-Z]/, "Must contain at least one uppercase letter")
     .regex(/[a-z]/, "Must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Must contain at least one number"),
+    .regex(/[0-9]/, "Must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Must contain at least one special character"),
   confirmPassword: z.string(),
   terms: z.literal(true, { message: "You must accept the terms" }),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -33,10 +34,11 @@ export const resetPasswordSchema = z.object({
   otp: z.string().min(4, "Enter the 4-digit code from your email").max(6),
   newPassword: z
     .string()
-    .min(6, "Password must be at least 6 characters")
+    .min(8, "Password must be at least 8 characters")
     .regex(/[A-Z]/, "Must contain at least one uppercase letter")
     .regex(/[a-z]/, "Must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Must contain at least one number"),
+    .regex(/[0-9]/, "Must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Must contain at least one special character"),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords do not match",
@@ -56,7 +58,7 @@ export const getFieldError = (result, field) => {
 export const passwordStrength = (pw) => {
   if (!pw) return 0;
   let score = 0;
-if (pw.length >= 6) score++;
+  if (pw.length >= 8) score++;
   if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
   if (/[0-9]/.test(pw)) score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
@@ -64,3 +66,4 @@ if (pw.length >= 6) score++;
 };
 
 export const strengthLabel = ["Very weak", "Weak", "Okay", "Good", "Strong"];
+

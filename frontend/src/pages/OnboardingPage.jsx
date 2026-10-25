@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { axiosInstance } from '../lib/axios';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import CosmicBackground from '../components/layout/CosmicBackground';
 
 const toCommaString = (arr) =>
   Array.isArray(arr) ? arr.join(', ') : (arr || '');
@@ -102,9 +103,10 @@ const [profilePic, setProfilePic] = useState(user?.profilePic || '');
   const skip = () => navigate('/dashboard');
 
   return (
-    <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
-      <div className="card w-full max-w-2xl bg-base-100 shadow-xl">
-        <div className="card-body">
+    <div className="min-h-screen bg-base-200 text-base-content flex items-center justify-center p-4 relative overflow-hidden py-10">
+      <CosmicBackground />
+      <div className="relative z-10 card w-full max-w-2xl bg-base-100/85 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)]">
+        <div className="card-body p-6 sm:p-8">
           <div className="flex items-start justify-between mb-2">
             <div>
               <h1 className="text-2xl font-bold text-base-content">Edit your profile</h1>

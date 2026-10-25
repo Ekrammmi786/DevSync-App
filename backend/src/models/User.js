@@ -161,28 +161,20 @@ userSchema.pre("save", async function (next) {
   }
 });
 
-userSchema.index({ fullname: 1 });
-userSchema.index({ isOnBoarded: 1 });
-userSchema.index({ email: 1 });
-userSchema.index({ codinglanguage: 1 });
-userSchema.index({ learninglanguage: 1 });
-userSchema.index({ location: 1 });
-userSchema.index({ role: 1 });
-userSchema.index({ techStack: 1 });
-userSchema.index({ interests: 1 });
-userSchema.index({ lookingFor: 1 });
-userSchema.index({ availability: 1 });
-userSchema.index({ timezone: 1 });
-userSchema.index({ githubUsername: 1 });
-userSchema.index({ linkedinUsername: 1 });
-userSchema.index({ portfolioUrl: 1 });
-userSchema.index({ experience: 1 });
-userSchema.index({ devScore: 1 });
-userSchema.index({ badges: 1 });
-userSchema.index({ completedProjects: 1 });
-userSchema.index({ completedInterviews: 1 });
-userSchema.index({ subscriptionPlan: 1 });
-userSchema.index({ isVerified: 1 });
+// Only indexes used in active queries
+userSchema.index({ email: 1 });                        // login, forgotPassword
+userSchema.index({ isOnBoarded: 1 });                  // recommended users filter
+userSchema.index({ fullname: "text" });                // text search
+userSchema.index({ codinglanguage: 1 });               // recommendation matching
+userSchema.index({ learninglanguage: 1 });             // recommendation matching
+userSchema.index({ location: 1 });                     // recommendation matching
+userSchema.index({ role: 1 });                         // search + recommendations
+userSchema.index({ techStack: 1 });                    // search + filter
+userSchema.index({ devScore: -1 });                    // leaderboard DESC sort
+userSchema.index({ isVerified: 1 });                   // admin / filter
+userSchema.index({ isAdmin: 1 });                      // admin check
+userSchema.index({ createdAt: -1 });                   // admin users sort
+
 
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 

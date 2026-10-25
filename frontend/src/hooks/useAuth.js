@@ -11,7 +11,7 @@ import {
   sendVerificationOtpApi,
   verifyEmailApi,
   resendOtpApi,
-} from "../api/authAPi";
+} from "../api/authApi";
 
 
 export const useGetMe = () => {
