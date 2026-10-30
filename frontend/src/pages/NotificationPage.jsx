@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, UserPlus, Check, X, Clock, Trash2 } from "lucide-react";
+import { Bell, UserPlus, Check, Trash2 } from "lucide-react";
 import {
   useNotifications,
   useMarkAllNotificationsRead,

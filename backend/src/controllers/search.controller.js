@@ -42,7 +42,7 @@ export const searchUsers = AsyncHandler(async (req, res) => {
   const currentUser = await User.findById(req.user._id)
     .select("friends")
     .lean();
-  const friendIds = currentUser.friends.map((id) => id.toString());
+  const friendIds = (currentUser?.friends || []).map((id) => id.toString());
 
   const pendingRequests = await FriendRequest.find({
     $or: [

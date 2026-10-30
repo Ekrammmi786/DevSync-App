@@ -53,21 +53,7 @@ const HomePage = () => {
   return (
     <>
       <main className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
-        {isNotOnboarded && (
-          <div className="alert alert-warning shadow-lg rounded-2xl border border-warning/30 bg-warning/10 text-warning">
-            <div className="flex-1">
-              <span>⚠️</span>
-              <span>Complete your profile to connect with developers &amp; appear on the leaderboard.</span>
-            </div>
-            <div className="flex-none">
-              <button className="btn btn-sm btn-primary rounded-xl" onClick={() => navigate('/onboarding')}>
-                Complete Profile
-              </button>
-            </div>
-          </div>
-        )}
-
-        {!isNotOnboarded && !user?.isVerified && (
+        {!user?.isVerified && (
           <div className="alert alert-info shadow-lg rounded-2xl border border-cyan-400/30 bg-cyan-950/40 text-cyan-200">
             <div className="flex-1">
               <span>📧</span>

@@ -30,7 +30,9 @@ const VerifyEmailPage = () => {
     setAttempted(true);
     if (!result.success) return;
     verify.mutate({ otp }, {
-      onSuccess: () => navigate('/'),
+      onSuccess: () => {
+        navigate(user?.isOnBoarded ? '/dashboard' : '/onboarding');
+      },
     });
   };
 

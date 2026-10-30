@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useMyFriends } from "../hooks/useUser";
@@ -24,41 +24,54 @@ const CallPage = () => {
   const videoToken = tokenData?.data?.token;
 
   const { data: friendsData, isLoading: friendsLoading } = useMyFriends(50);
-  const friends = friendsData?.data ?? [];
+  const friends = useMemo(() => friendsData?.data ?? [], [friendsData?.data]);
 
   const [activeCallId, setActiveCallId] = useState(null);
   const [isCallActive, setIsCallActive] = useState(false);
-  const [client, setClient] = useState(null);
   const [call, setCall] = useState(null);
   const [isJoining, setIsJoining] = useState(false);
   const [callPartner, setCallPartner] = useState(null);
 
-  useEffect(() => {
-    if (videoToken && user?._id && !client && apiKey) {
-      try {
-        const _client = new StreamVideoClient({
-          apiKey,
-          token: videoToken,
-          user: {
-            id: user._id,
-            name: user.fullname,
-            image: user.profilePic || "https://testingbot.com/free-online-tools/random-avatar/411",
-          },
-        });
-        setClient(_client);
+  const [callDuration, setCallDuration] = useState(0);
 
-        return () => {
-          _client.disconnectUser();
-        };
-      } catch (err) {
-        console.error("Error creating StreamVideoClient:", err);
-      }
+  useEffect(() => {
+    if (!isCallActive) return;
+    const interval = setInterval(() => {
+      setCallDuration((prev) => prev + 1);
+    }, 1000);
+    return () => {
+      clearInterval(interval);
+      setCallDuration(0);
+    };
+  }, [isCallActive]);
+
+  const client = useMemo(() => {
+    if (!videoToken || !user?._id || !apiKey) return null;
+    try {
+      return new StreamVideoClient({
+        apiKey,
+        token: videoToken,
+        user: {
+          id: user._id,
+          name: user.fullname,
+          image: user.profilePic || "https://testingbot.com/free-online-tools/random-avatar/411",
+        },
+      });
+    } catch (err) {
+      console.error("Error creating StreamVideoClient:", err);
+      return null;
     }
-  }, [videoToken, user?._id, user?.fullname, user?.profilePic, client]);
+  }, [videoToken, user]);
+
+  useEffect(() => {
+    return () => {
+      client?.disconnectUser?.();
+    };
+  }, [client]);
 
   const startCall = useCallback(
     async (friendId, friendName = "Friend") => {
-      if (!client || isJoining) return;
+      if (!client || isJoining || !user?._id) return;
       const callId = [user._id, friendId].sort().join("-");
       setActiveCallId(callId);
       setIsCallActive(true);
@@ -80,7 +93,7 @@ const CallPage = () => {
         setIsJoining(false);
       }
     },
-    [user?._id, client, isJoining]
+    [user, client, isJoining]
   );
 
   const endCall = useCallback(async () => {
@@ -103,7 +116,10 @@ const CallPage = () => {
     const targetUserId = searchParams.get("userId");
     if (targetUserId && !isCallActive && client && friends.length > 0) {
       const friend = friends.find((f) => f._id === targetUserId);
-      startCall(targetUserId, friend?.fullname || "Partner");
+      const timer = setTimeout(() => {
+        startCall(targetUserId, friend?.fullname || "Partner");
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [searchParams, startCall, isCallActive, client, friends]);
 
@@ -133,27 +149,53 @@ const CallPage = () => {
     );
   }
 
+
+
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const copyCallLink = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url);
+    toast.success("Call link copied to clipboard! 📋");
+  };
+
   // Active Video Room
   if (isCallActive && activeCallId) {
     return (
       <div className="h-[calc(100vh-4.5rem)] flex flex-col bg-slate-950 relative overflow-hidden border border-white/10 rounded-2xl m-2 sm:m-4 shadow-2xl">
         {/* Top Control Bar */}
-        <div className="px-4 py-3 bg-base-100/80 backdrop-blur-xl border-b border-white/10 flex items-center justify-between z-20">
+        <div className="px-4 py-3 bg-[#0d0822]/90 backdrop-blur-xl border-b border-white/10 flex items-center justify-between z-20">
           <div className="flex items-center gap-3">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#10b981]" />
             <div>
-              <div className="text-xs font-bold text-white uppercase tracking-wider">
-                Live Pairing Session · {callPartner || "Active Room"}
+              <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <span>Live Pairing Session · {callPartner || "Active Room"}</span>
+                <span className="badge badge-sm bg-primary/20 text-primary border-primary/30 font-mono text-[10px]">
+                  {formatDuration(callDuration)}
+                </span>
               </div>
               <div className="text-[11px] text-base-content/50">1080p HD Encrypted Stream</div>
             </div>
           </div>
-          <button
-            onClick={endCall}
-            className="btn btn-error btn-sm text-white px-4 shadow-[0_0_15px_rgba(239,68,68,0.4)]"
-          >
-            Leave Call
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={copyCallLink}
+              className="btn btn-ghost btn-sm text-xs rounded-xl border border-white/10 hover:bg-white/10 text-white"
+              title="Copy direct invite link"
+            >
+              📋 Copy Link
+            </button>
+            <button
+              onClick={endCall}
+              className="btn btn-error btn-sm text-white px-4 shadow-[0_0_15px_rgba(239,68,68,0.4)]"
+            >
+              Leave Call
+            </button>
+          </div>
         </div>
 
         {/* Video Canvas Container */}

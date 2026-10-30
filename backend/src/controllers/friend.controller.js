@@ -23,7 +23,7 @@ export const getMyFriends = AsyncHandler(async (req, res) => {
 
   const total = await User.findById(req.user._id)
     .select("friends")
-    .then((u) => u.friends.length);
+    .then((u) => u?.friends?.length || 0);
 
   const responseData = buildPaginationResponse(user.friends, { skip, limit, total });
   setCache(cacheKey, responseData, 60);

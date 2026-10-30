@@ -43,7 +43,6 @@ export const useOrCreateChannel = () => {
 };
 
 export const useUploadChatFile = () => {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: uploadChatFileApi,
     onSuccess: (data) => {

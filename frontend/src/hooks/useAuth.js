@@ -47,9 +47,9 @@ export const useSignup = () => {
   return useMutation({
     mutationFn: signupApi,
     onSuccess: (data) => {
-      toast.success("Account created!");
+      toast.success("Account created! Please verify your email.");
       queryClient.setQueryData(["auth", "me"], { user: data.data });
-      navigate("/onboarding");
+      navigate("/verify-email");
     },
     onError: (error) => {
       toast.error(error?.response?.data?.message || "Signup failed");

@@ -172,36 +172,71 @@
   background: linear-gradient(135deg, #f59e0b, #d97706) !important;
   color: #ffffff !important;
   border: none !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25) !important;
 }
 
 .str-chat__message-simple--other .str-chat__message-simple-text-inner {
-  background: #1e1342 !important;
+  background: #190f38 !important;
   color: #f3f4f6 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.str-chat__message-simple-text-inner code {
+  background: rgba(0, 0, 0, 0.45) !important;
+  color: #fbbf24 !important;
+  padding: 0.15rem 0.4rem !important;
+  border-radius: 0.375rem !important;
+  font-size: 0.85em !important;
+}
+
+.str-chat__message-simple-text-inner pre {
+  background: #090514 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0.75rem !important;
+  padding: 0.75rem 1rem !important;
+  margin: 0.5rem 0 !important;
+  overflow-x: auto !important;
 }
 
 .str-chat__message-textarea {
-  background: rgba(15, 9, 38, 0.85) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgba(15, 9, 38, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
   color: #ffffff !important;
   border-radius: 0.75rem !important;
-  font-size: 0.95rem !important;
+  font-size: 0.92rem !important;
 }
 
 .str-chat__message-textarea:focus {
   border-color: #f59e0b !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.2) !important;
   outline: none !important;
+}
+
+.str-chat__message-actions-box {
+  background: rgba(15, 9, 38, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
+}
+
+.str-chat__reaction-selector {
+  background: rgba(15, 9, 38, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 9999px !important;
 }
 
 /* Stream Video dark theme overrides */
 .str-video__speaker-layout {
-  background: #0a0616 !important;
+  background: #06030e !important;
 }
 
 .str-video__call-controls {
-  background: rgba(15, 9, 38, 0.9) !important;
+  background: rgba(15, 9, 38, 0.92) !important;
   backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   border-radius: 9999px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7) !important;
 }
 
 /* High-FPS GPU-composited scrolling utilities */
@@ -232,4 +267,5 @@
     transform: scale(1) translateY(0);
   }
 }
+
 

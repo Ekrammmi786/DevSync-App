@@ -100,7 +100,23 @@ const [profilePic, setProfilePic] = useState(user?.profilePic || '');
     }
   };
 
-  const skip = () => navigate('/dashboard');
+  const skip = async () => {
+    try {
+      // Mark as onboarded with default/existing data so user can access dashboard
+      await axiosInstance.post('/auth/onboarding', {
+        fullname: form.fullname || user?.fullname || '',
+        bio: form.bio || '',
+        codingLanguage: [],
+        learningLanguage: [],
+        techStack: [],
+        interests: [],
+      });
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      navigate('/dashboard');
+    } catch (err) {
+      navigate('/dashboard');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-base-200 text-base-content flex items-center justify-center p-4 relative overflow-hidden py-10">
@@ -115,7 +131,7 @@ const [profilePic, setProfilePic] = useState(user?.profilePic || '');
               </p>
             </div>
             <button className="btn btn-ghost btn-sm" onClick={skip}>
-              Back to Dashboard
+              Skip to Dashboard
             </button>
           </div>
 

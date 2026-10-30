@@ -1,6 +1,6 @@
 import User from "../models/User.js";
 import { generateStreamToken, streamClient } from "../lib/stream.js";
-import { StreamVideoClient } from "@stream-io/node-sdk";
+import { StreamClient } from "@stream-io/node-sdk";
 import cloudinary from "../lib/cloudinary.js";
 import "dotenv/config";
 
@@ -31,9 +31,8 @@ export async function getVideoToken(req, res) {
             });
         }
 
-        const videoClient = new StreamVideoClient({ apiKey, secret: apiSecret });
-        const token = videoClient.generateUserToken(req.user._id.toString());
-        await videoClient.disconnect();
+        const client = new StreamClient(apiKey, apiSecret);
+        const token = client.generateUserToken({ user_id: req.user._id.toString() });
 
         res.status(200).json({ success: true, data: { token } });
     } catch (error) {

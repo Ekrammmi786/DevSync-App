@@ -23,7 +23,7 @@ router.post("/login", loginRateLimiter, validate(loginSchema), login);
 
 // Protected
 router.post("/logout", protectRoute, logout);
-router.post("/onboarding", protectRoute, requireVerified, onboard);
+router.post("/onboarding", protectRoute, onboard);
 router.get("/get-me", protectRoute, (req, res) => {
   res.status(200).json({
     success: true,

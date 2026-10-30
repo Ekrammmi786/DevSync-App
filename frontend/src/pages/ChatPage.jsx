@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Chat,
   Channel,
   Window,
-  ChannelHeader,
   MessageList,
   MessageComposer,
   Thread,
@@ -25,26 +24,18 @@ import "@stream-io/video-react-sdk/dist/css/styles.css";
 import { useAuth } from "../context/AuthContext";
 import CosmicBackground from "../components/layout/CosmicBackground";
 import { useStreamToken, useVideoToken, useOrCreateChannel } from "../hooks/useChat";
-import { useMyFriends, useRemoveFriend } from "../hooks/useUser";
+import { useMyFriends } from "../hooks/useUser";
 import {
   ArrowLeft,
   Video,
   User,
-  Users,
   Search,
   Maximize2,
   Minimize2,
   X,
   Sparkles,
-  PhoneCall,
-  PhoneOff,
   ChevronLeft,
   ChevronRight,
-  MessageSquare,
-  Radio,
-  Share2,
-  ExternalLink,
-  Zap,
 } from "lucide-react";
 import NotificationDropdown from "../components/layout/NotificationDropdown";
 import UserProfileModal from "../components/UserProfileModal";
@@ -161,7 +152,6 @@ FriendItem.displayName = "FriendItem";
 const ChatPage = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const targetUserId = searchParams.get("userId");
 
   // Authentication & Tokens
@@ -173,12 +163,12 @@ const ChatPage = () => {
 
   // Friends & Backend API
   const { data: friendsData } = useMyFriends(50);
-  const friends = friendsData?.data ?? [];
+  const friends = useMemo(() => friendsData?.data ?? [], [friendsData?.data]);
   const { mutateAsync: createChannelBackend } = useOrCreateChannel();
-  const { mutate: removeFriend } = useRemoveFriend();
 
   // Navigation & Channels
   const [activeChannel, setActiveChannel] = useState(null);
+  const [activePartnerId, setActivePartnerId] = useState(null);
   const [channelList, setChannelList] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -187,7 +177,6 @@ const ChatPage = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // In-Chat Video Calling State
-  const [videoClient, setVideoClient] = useState(null);
   const [activeCall, setActiveCall] = useState(null);
   const [isCallActive, setIsCallActive] = useState(false);
   const [isCallJoining, setIsCallJoining] = useState(false);
@@ -210,27 +199,29 @@ const ChatPage = () => {
   });
 
   // Initialize Stream Video Client
-  useEffect(() => {
-    if (videoToken && userId && !videoClient && apiKey) {
-      try {
-        const vClient = new StreamVideoClient({
-          apiKey,
-          token: videoToken,
-          user: {
-            id: userId,
-            name: user?.fullname || "User",
-            image: user?.profilePic || "https://testingbot.com/free-online-tools/random-avatar/411",
-          },
-        });
-        setVideoClient(vClient);
-        return () => {
-          vClient.disconnectUser();
-        };
-      } catch (err) {
-        console.error("StreamVideoClient init error:", err);
-      }
+  const videoClient = useMemo(() => {
+    if (!videoToken || !userId || !apiKey) return null;
+    try {
+      return new StreamVideoClient({
+        apiKey,
+        token: videoToken,
+        user: {
+          id: userId,
+          name: user?.fullname || "User",
+          image: user?.profilePic || "https://testingbot.com/free-online-tools/random-avatar/411",
+        },
+      });
+    } catch (err) {
+      console.error("StreamVideoClient init error:", err);
+      return null;
     }
-  }, [videoToken, userId, user?.fullname, user?.profilePic, videoClient]);
+  }, [videoToken, user, userId]);
+
+  useEffect(() => {
+    return () => {
+      videoClient?.disconnectUser?.();
+    };
+  }, [videoClient]);
 
   // Load existing channels & index them in 0ms map
   const loadUserChannels = useCallback(async () => {
@@ -262,8 +253,35 @@ const ChatPage = () => {
   }, [chatClient, userId]);
 
   useEffect(() => {
+    let isMounted = true;
     if (chatClient && userId) {
-      loadUserChannels();
+      const initLoad = async () => {
+        try {
+          const filter = { type: "messaging", members: { $in: [userId] } };
+          const sort = [{ last_message_at: -1 }];
+          const channels = await chatClient.queryChannels(filter, sort, {
+            watch: true,
+            presence: true,
+            state: true,
+            limit: 30,
+          });
+          if (isMounted) {
+            setChannelList(channels);
+            channels.forEach((ch) => {
+              channelMapRef.current.set(ch.id, ch);
+              const members = ch.state?.members || {};
+              const pId = Object.keys(members).find((id) => id !== userId);
+              if (pId) {
+                partnerMapRef.current.set(pId, ch);
+              }
+            });
+          }
+        } catch (err) {
+          console.error("Error querying channels:", err);
+        }
+      };
+
+      initLoad();
 
       const handleNewMessage = (e) => {
         if (e.channel_id) {
@@ -272,6 +290,7 @@ const ChatPage = () => {
       };
       chatClient.on("message.new", handleNewMessage);
       return () => {
+        isMounted = false;
         chatClient.off("message.new", handleNewMessage);
       };
     }
@@ -287,6 +306,7 @@ const ChatPage = () => {
         channel.id?.split("-").find((id) => id !== userId);
 
       activePartnerIdRef.current = targetPartnerId || null;
+      setActivePartnerId(targetPartnerId || null);
       setActiveChannel(channel);
 
       if (targetPartnerId) {
@@ -304,6 +324,7 @@ const ChatPage = () => {
       if (!partnerId) return;
 
       activePartnerIdRef.current = partnerId;
+      setActivePartnerId(partnerId);
 
       // 1. Check if we already have an initialized channel for this partner
       let channel = partnerMapRef.current.get(partnerId);
@@ -360,7 +381,7 @@ const ChatPage = () => {
       otherId = activeChannel.id.split("-").find((id) => id !== userId);
     }
     if (!otherId) {
-      otherId = activePartnerIdRef.current;
+      otherId = activePartnerId;
     }
     if (!otherId) return null;
 
@@ -380,7 +401,7 @@ const ChatPage = () => {
       role: friend?.role || "Developer",
       online: Boolean(memberUser?.online),
     };
-  }, [activeChannel, userId, friends]);
+  }, [activeChannel, userId, friends, activePartnerId]);
 
   // IN-CHAT STREAM VIDEO CALL INTEGRATION
   const startInChatVideoCall = useCallback(async () => {
@@ -827,6 +848,7 @@ const ChatPage = () => {
                     <button
                       onClick={() => {
                         setActiveChannel(null);
+                        setActivePartnerId(null);
                         activePartnerIdRef.current = null;
                         setSearchParams({}, { replace: true });
                       }}

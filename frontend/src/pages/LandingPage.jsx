@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import * as THREE from "three";
 
@@ -181,16 +181,10 @@ const LandingPage = () => {
   const canvasRef = useRef(null);
   const scrollRef = useRef(0);
   const targetScrollRef = useRef(0);
-
-  const [hasWebGL, setHasWebGL] = useState(true);
-  const [activeTab, setActiveTab] = useState("pairing");
-  const [selectedTech, setSelectedTech] = useState("React");
+  const hasWebGL = isWebGLAvailable();
 
   useEffect(() => {
-    if (!isWebGLAvailable()) {
-      setHasWebGL(false);
-      return;
-    }
+    if (!hasWebGL) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -207,7 +201,6 @@ const LandingPage = () => {
         powerPreference: "high-performance",
       });
     } catch {
-      setHasWebGL(false);
       return;
     }
 
@@ -389,7 +382,7 @@ const LandingPage = () => {
       crystalData.wireMat.dispose();
       renderer.dispose();
     };
-  }, []);
+  }, [hasWebGL]);
 
   return (
     <div

@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useLogout } from '../hooks/useAuth';
 import {
   useAdminDashboard,
   useAdminUsers,
@@ -13,7 +11,6 @@ import {
 } from '../hooks/useAdmin';
 
 const AdminPage = () => {
-  const { mutate: logout } = useLogout();
   const [tab, setTab] = useState('dashboard');
   const [search, setSearch] = useState('');
 
